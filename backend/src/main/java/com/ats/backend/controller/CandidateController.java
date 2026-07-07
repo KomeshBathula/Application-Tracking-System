@@ -59,6 +59,15 @@ public class CandidateController {
             throw new InvalidRequestException("Invalid file format. Only PDF, DOC, or DOCX files are allowed.");
         }
 
+        String contentType = file.getContentType();
+        if (contentType == null || !(
+                contentType.equals("application/pdf") || 
+                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") || 
+                contentType.equals("application/msword")
+        )) {
+            throw new InvalidRequestException("Invalid MIME type. Only PDF, DOC, or DOCX files are allowed.");
+        }
+
         String email = principal.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
@@ -75,7 +84,21 @@ public class CandidateController {
 
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            String resumeUrl = "/uploads/resumes/" + filename;
+            // Clean up previous resume file if it exists to avoid orphaned files
+            String oldResumeUrl = user.getResumeUrl();
+            if (oldResumeUrl != null && !oldResumeUrl.isEmpty()) {
+                try {
+                    String oldFilename = oldResumeUrl.substring(oldResumeUrl.lastIndexOf('/') + 1);
+                    Path oldFilePath = uploadPath.resolve(oldFilename).normalize();
+                    if (oldFilePath.startsWith(uploadPath.normalize()) && Files.exists(oldFilePath)) {
+                        Files.delete(oldFilePath);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Warning: Failed to delete old resume file: " + e.getMessage());
+                }
+            }
+
+            String resumeUrl = "/api/resumes/" + filename;
             user.setResumeUrl(resumeUrl);
             User savedUser = userRepository.save(user);
 

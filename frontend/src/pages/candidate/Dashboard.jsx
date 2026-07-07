@@ -65,6 +65,20 @@ const Dashboard = () => {
         }
     };
 
+    const handleViewResume = async (resumeUrl) => {
+        try {
+            const response = await api.get(resumeUrl, {
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error('Error viewing resume:', error);
+            alert('Failed to load resume. You may not have permission to view this file.');
+        }
+    };
+
     const fetchJobs = async (searchParams = {}, pageNum = 0) => {
         setLoadingJobs(true);
         try {
@@ -307,14 +321,23 @@ const Dashboard = () => {
                                         <div style={{ marginBottom: '1rem', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                                                 📄 Current Resume: 
-                                                <a 
-                                                    href={`${api.defaults.baseURL.replace('/api', '')}${user.resumeUrl}`} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', textDecoration: 'underline', fontWeight: '500' }}
+                                                <button 
+                                                    onClick={() => handleViewResume(user.resumeUrl)}
+                                                    style={{ 
+                                                        marginLeft: '0.5rem', 
+                                                        color: 'var(--primary-color)', 
+                                                        textDecoration: 'underline', 
+                                                        fontWeight: '500',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: 0,
+                                                        fontSize: 'inherit',
+                                                        fontFamily: 'inherit'
+                                                    }}
                                                 >
                                                     View / Download
-                                                </a>
+                                                </button>
                                             </span>
                                         </div>
                                     ) : (

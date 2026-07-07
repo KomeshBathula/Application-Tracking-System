@@ -31,6 +31,8 @@ const Dashboard = () => {
     // Candidates state
     const [candidates, setCandidates] = useState([]);
     const [loadingCandidates, setLoadingCandidates] = useState(false);
+    const [candidateTotalPages, setCandidateTotalPages] = useState(0);
+    const [candidateCurrentPage, setCandidateCurrentPage] = useState(0);
 
     const fetchStats = async () => {
         setLoadingStats(true);
@@ -76,17 +78,38 @@ const Dashboard = () => {
         }
     };
 
-    const fetchCandidates = async () => {
+    const fetchCandidates = async (pageNum = 0) => {
         setLoadingCandidates(true);
         try {
-            const res = await api.get('/recruiter/candidates');
+            const res = await api.get('/recruiter/candidates', {
+                params: {
+                    page: pageNum,
+                    size: 10
+                }
+            });
             if (res.data && res.data.success) {
-                setCandidates(res.data.data);
+                setCandidates(res.data.data.content);
+                setCandidateTotalPages(res.data.data.totalPages);
+                setCandidateCurrentPage(res.data.data.number);
             }
         } catch (err) {
             console.error('Error fetching candidates:', err);
         } finally {
             setLoadingCandidates(false);
+        }
+    };
+
+    const handleViewResume = async (resumeUrl) => {
+        try {
+            const response = await api.get(resumeUrl, {
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error('Error viewing resume:', error);
+            alert('Failed to load resume. You may not have permission to view this file.');
         }
     };
 
@@ -96,7 +119,7 @@ const Dashboard = () => {
         } else if (activeTab === 'jobs') {
             fetchJobs({}, 0);
         } else if (activeTab === 'candidates') {
-            fetchCandidates();
+            fetchCandidates(0);
         }
     }, [activeTab]);
 
@@ -391,15 +414,13 @@ const Dashboard = () => {
                                                     </td>
                                                     <td style={{ padding: '0.75rem' }}>
                                                         {candidate.resumeUrl ? (
-                                                            <a 
-                                                                href={`${api.defaults.baseURL.replace('/api', '')}${candidate.resumeUrl}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
+                                                            <button 
+                                                                onClick={() => handleViewResume(candidate.resumeUrl)}
                                                                 className="btn btn-secondary btn-sm"
-                                                                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                                                             >
                                                                 📥 Download
-                                                            </a>
+                                                            </button>
                                                         ) : (
                                                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>N/A</span>
                                                         )}
@@ -408,6 +429,13 @@ const Dashboard = () => {
                                             ))}
                                         </tbody>
                                     </table>
+                                    {candidateTotalPages > 1 && (
+                                        <Pagination
+                                            currentPage={candidateCurrentPage}
+                                            totalPages={candidateTotalPages}
+                                            onPageChange={(page) => fetchCandidates(page)}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -8,13 +8,13 @@ import com.ats.backend.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/recruiter")
@@ -41,11 +41,12 @@ public class RecruiterController {
 
     @GetMapping("/candidates")
     @Operation(summary = "Get candidate list", description = "Accessible by RECRUITER and ADMIN roles. Returns all registered candidates with their resumes.")
-    public ResponseEntity<ApiResponse<List<UserDto>>> getCandidates() {
-        List<UserDto> candidates = userRepository.findByRoleRoleName(RoleName.ROLE_CANDIDATE)
-                .stream()
-                .map(userMapper::toDto)
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<Page<UserDto>>> getCandidates(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<UserDto> candidates = userRepository.findByRoleRoleName(RoleName.ROLE_CANDIDATE, PageRequest.of(page, size))
+                .map(userMapper::toDto);
         return ResponseEntity.ok(ApiResponse.success("Candidates list retrieved successfully", candidates));
     }
 }
