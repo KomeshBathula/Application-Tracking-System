@@ -1,6 +1,6 @@
 import React from 'react';
 
-const JobCard = ({ job, onView, onEdit, onDelete, showActions }) => {
+const JobCard = ({ job, onView, onEdit, onDelete, showActions, onApply, isApplied }) => {
     return (
         <div className="card">
             <div className="card-header" style={{ alignItems: 'flex-start' }}>
@@ -12,9 +12,21 @@ const JobCard = ({ job, onView, onEdit, onDelete, showActions }) => {
                         <span>{job.location}</span>
                     </div>
                 </div>
-                <span className={`badge ${job.status === 'OPEN' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
-                    {job.status}
-                </span>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {isApplied && (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                            Applied
+                        </span>
+                    )}
+                    {showActions && job.applicantCount !== undefined && job.applicantCount !== null && (
+                        <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
+                            {job.applicantCount} {job.applicantCount === 1 ? 'applicant' : 'applicants'}
+                        </span>
+                    )}
+                    <span className={`badge ${job.status === 'OPEN' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
+                        {job.status}
+                    </span>
+                </div>
             </div>
             
             <div className="card-body" style={{ padding: '1.25rem 1.5rem' }}>
@@ -27,8 +39,8 @@ const JobCard = ({ job, onView, onEdit, onDelete, showActions }) => {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                         </svg>
                         <span>{job.employmentType}</span>
                     </div>
@@ -67,11 +79,24 @@ const JobCard = ({ job, onView, onEdit, onDelete, showActions }) => {
                         )}
                     </div>
                 ) : (
-                    onView && (
-                        <button className="btn btn-primary btn-sm" onClick={() => onView(job)}>
-                            View Details
-                        </button>
-                    )
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {onView && (
+                            <button className="btn btn-secondary btn-sm" onClick={() => onView(job)}>
+                                View Details
+                            </button>
+                        )}
+                        {onApply && (
+                            isApplied ? (
+                                <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.7, pointerEvents: 'none' }}>
+                                    ✓ Applied
+                                </button>
+                            ) : (
+                                <button className="btn btn-primary btn-sm" onClick={() => onApply(job)}>
+                                    Apply
+                                </button>
+                            )
+                        )}
+                    </div>
                 )}
             </div>
         </div>

@@ -29,11 +29,13 @@ public class JobServiceImpl implements JobService {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final JobMapper jobMapper;
+    private final com.ats.backend.repository.ApplicationRepository applicationRepository;
 
-    public JobServiceImpl(JobRepository jobRepository, UserRepository userRepository, JobMapper jobMapper) {
+    public JobServiceImpl(JobRepository jobRepository, UserRepository userRepository, JobMapper jobMapper, com.ats.backend.repository.ApplicationRepository applicationRepository) {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.jobMapper = jobMapper;
+        this.applicationRepository = applicationRepository;
     }
 
     @Override
@@ -55,7 +57,7 @@ public class JobServiceImpl implements JobService {
                 .build();
 
         Job savedJob = jobRepository.save(job);
-        return jobMapper.toDto(savedJob);
+        return jobMapper.toDto(savedJob, 0L);
     }
 
     @Override
@@ -83,7 +85,8 @@ public class JobServiceImpl implements JobService {
         job.setStatus(jobDto.getStatus());
 
         Job updatedJob = jobRepository.save(job);
-        return jobMapper.toDto(updatedJob);
+        long count = applicationRepository.countByJobId(updatedJob.getId());
+        return jobMapper.toDto(updatedJob, count);
     }
 
     @Override
@@ -107,8 +110,9 @@ public class JobServiceImpl implements JobService {
     @Transactional(readOnly = true)
     public JobDto getJobById(Long id) {
         Job job = jobRepository.findById(id)
-                .orElseThrow(() -> new JobNotFoundException("Job not found with id: " + id));
-        return jobMapper.toDto(job);
+                 .orElseThrow(() -> new JobNotFoundException("Job not found with id: " + id));
+        long count = applicationRepository.countByJobId(job.getId());
+        return jobMapper.toDto(job, count);
     }
 
     @Override
@@ -142,7 +146,15 @@ public class JobServiceImpl implements JobService {
                 pageable
         );
 
-        return jobsPage.map(jobMapper::toDto);
+        List<Long> jobIds = jobsPage.getContent().stream().map(Job::getId).collect(java.util.stream.Collectors.toList());
+        Map<Long, Long> countsMap = jobIds.isEmpty() ? new HashMap<>() :
+                applicationRepository.countByJobIds(jobIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> (Long) row[1]
+                        ));
+
+        return jobsPage.map(job -> jobMapper.toDto(job, countsMap.getOrDefault(job.getId(), 0L)));
     }
 
     @Override

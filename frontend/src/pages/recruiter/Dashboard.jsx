@@ -508,6 +508,149 @@ const Dashboard = () => {
 const ViewJobDetailsModal = ({ job, onClose }) => {
     const dialogRef = React.useRef(null);
     const closeButtonRef = React.useRef(null);
+    
+    const [modalTab, setModalTab] = React.useState('details');
+    
+    // Applicants states
+    const [applicants, setApplicants] = React.useState([]);
+    const [loadingApplicants, setLoadingApplicants] = React.useState(false);
+    const [appTotalPages, setAppTotalPages] = React.useState(0);
+    const [appCurrentPage, setAppCurrentPage] = React.useState(0);
+    const [search, setSearch] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('ALL');
+    
+    // Update status states
+    const [updatingApp, setUpdatingApp] = React.useState(null);
+    const [newStatus, setNewStatus] = React.useState('');
+    const [notes, setNotes] = React.useState('');
+    
+    // Timeline states
+    const [timelineApp, setTimelineApp] = React.useState(null);
+    const [timelineHistory, setTimelineHistory] = React.useState([]);
+    const [loadingTimeline, setLoadingTimeline] = React.useState(false);
+
+    // Alert toast states
+    const [subAlertText, setSubAlertText] = React.useState(null);
+    const [subAlertType, setSubAlertType] = React.useState('success');
+
+    const showSubNotification = (text, type = 'success') => {
+        setSubAlertText(text);
+        setSubAlertType(type);
+        setTimeout(() => {
+            setSubAlertText(null);
+        }, 5000);
+    };
+
+    const fetchApplicants = async (page = 0, searchVal = search, statusVal = statusFilter) => {
+        setLoadingApplicants(true);
+        try {
+            const params = {
+                page,
+                size: 5,
+                search: searchVal,
+                status: statusVal
+            };
+            if (statusVal === 'ALL') {
+                delete params.status;
+            }
+            if (!searchVal.trim()) {
+                delete params.search;
+            }
+            const res = await api.get(`/applications/job/${job.id}`, { params });
+            if (res.data && res.data.success) {
+                setApplicants(res.data.data.content);
+                setAppTotalPages(res.data.data.totalPages);
+                setAppCurrentPage(res.data.data.number);
+            }
+        } catch (err) {
+            console.error('Error fetching applicants:', err);
+            showSubNotification('Failed to fetch applicants list.', 'error');
+        } finally {
+            setLoadingApplicants(false);
+        }
+    };
+
+    const handleUpdateStatus = async () => {
+        try {
+            const res = await api.patch(`/applications/${updatingApp.id}/status`, {
+                status: newStatus,
+                note: notes
+            });
+            if (res.data && res.data.success) {
+                showSubNotification(`Updated status for ${updatingApp.candidateFullName} to ${newStatus.replace('_', ' ')}!`, 'success');
+                setUpdatingApp(null);
+                setNotes('');
+                fetchApplicants(appCurrentPage, search, statusFilter);
+            } else {
+                showSubNotification(res.data.message || 'Failed to update application status.', 'error');
+            }
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Failed to update application status.';
+            showSubNotification(msg, 'error');
+        }
+    };
+
+    const fetchTimeline = async (app) => {
+        setTimelineApp(app);
+        setLoadingTimeline(true);
+        setTimelineHistory([]);
+        try {
+            const res = await api.get(`/applications/${app.id}/history`);
+            if (res.data && res.data.success) {
+                setTimelineHistory(res.data.data);
+            } else {
+                showSubNotification('Failed to retrieve timeline data.', 'error');
+            }
+        } catch (err) {
+            console.error('Error fetching history:', err);
+            showSubNotification('Failed to retrieve timeline data.', 'error');
+        } finally {
+            setLoadingTimeline(false);
+        }
+    };
+
+    const handleViewResume = async (resumeUrl) => {
+        try {
+            const response = await api.get(resumeUrl, {
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error('Error viewing resume:', error);
+            alert('Failed to load resume. You may not have permission to view this file.');
+        }
+    };
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'APPLIED':
+                return { backgroundColor: 'var(--status-applied)', color: '#ffffff' };
+            case 'UNDER_REVIEW':
+                return { backgroundColor: 'var(--status-review)', color: '#ffffff' };
+            case 'SHORTLISTED':
+                return { backgroundColor: 'var(--info-color)', color: '#ffffff' };
+            case 'INTERVIEW_SCHEDULED':
+                return { backgroundColor: 'var(--status-interview)', color: '#ffffff' };
+            case 'INTERVIEWED':
+                return { backgroundColor: 'var(--primary-color)', color: '#ffffff' };
+            case 'OFFERED':
+                return { backgroundColor: 'var(--status-offered)', color: '#ffffff' };
+            case 'REJECTED':
+                return { backgroundColor: 'var(--status-rejected)', color: '#ffffff' };
+            case 'WITHDRAWN':
+                return { backgroundColor: 'var(--text-muted)', color: '#ffffff' };
+            default:
+                return { backgroundColor: 'var(--text-muted)', color: '#ffffff' };
+        }
+    };
+
+    React.useEffect(() => {
+        if (modalTab === 'applicants') {
+            fetchApplicants(0, search, statusFilter);
+        }
+    }, [modalTab]);
 
     React.useEffect(() => {
         if (closeButtonRef.current) {
@@ -516,7 +659,13 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
-                onClose();
+                if (updatingApp) {
+                    setUpdatingApp(null);
+                } else if (timelineApp) {
+                    setTimelineApp(null);
+                } else {
+                    onClose();
+                }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
@@ -552,7 +701,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
             window.removeEventListener('keydown', handleKeyDown);
             modalContainer?.removeEventListener('keydown', handleKeyDownTrap);
         };
-    }, [onClose]);
+    }, [onClose, updatingApp, timelineApp]);
 
     return (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -562,41 +711,334 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                 role="dialog" 
                 aria-modal="true" 
                 aria-labelledby="modal-title"
-                style={{ borderTop: '4px solid var(--success-color)' }}
+                style={{ borderTop: '4px solid var(--success-color)', maxWidth: '800px', width: '95%' }}
             >
-                <div className="card-header" style={{ padding: '1.25rem 1.5rem' }}>
-                    <h3 id="modal-title" className="card-title">{job.title}</h3>
-                    <button 
-                        ref={closeButtonRef}
-                        className="btn btn-ghost btn-sm" 
-                        style={{ padding: 0, width: '28px', height: '28px' }} 
-                        onClick={onClose}
-                        aria-label="Close details"
-                    >
-                        ✕
-                    </button>
-                </div>
-                <div className="card-body" style={{ padding: '1.5rem', overflowY: 'auto' }}>
-                    <p style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)' }}>{job.company} — {job.location}</p>
-                    
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', margin: '1rem 0' }}>
-                        <span className="badge badge-success">{job.employmentType}</span>
-                        <span className="badge badge-success">{job.experienceRequired} Experience</span>
-                        <span className="badge badge-success">{job.salaryRange}</span>
-                        <span className={`badge ${job.status === 'OPEN' ? 'badge-success' : 'badge-danger'}`}>
-                            Status: {job.status}
-                        </span>
+                <div className="card-header" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h3 id="modal-title" className="card-title" style={{ fontSize: '1.25rem' }}>{job.title}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.15rem' }}>{job.company} — {job.location}</p>
+                        </div>
+                        <button 
+                            ref={closeButtonRef}
+                            className="btn btn-ghost btn-sm" 
+                            style={{ padding: 0, width: '28px', height: '28px' }} 
+                            onClick={onClose}
+                            aria-label="Close details"
+                        >
+                            ✕
+                        </button>
                     </div>
 
-                    <div style={{ margin: '1.5rem 0', lineHeight: '1.6', fontSize: '0.9rem' }}>
-                        <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.5rem' }}>Job Description:</strong>
-                        <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{job.description}</p>
+                    {/* Tab Navigation */}
+                    <div className="tabs" style={{ marginBottom: 0, marginTop: '0.5rem', display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                        <button 
+                            className={`tab-item ${modalTab === 'details' ? 'active' : ''}`}
+                            onClick={() => setModalTab('details')}
+                            style={{ paddingBottom: '0.5rem' }}
+                        >
+                            Job Details
+                        </button>
+                        <button 
+                            className={`tab-item ${modalTab === 'applicants' ? 'active' : ''}`}
+                            onClick={() => setModalTab('applicants')}
+                            style={{ paddingBottom: '0.5rem' }}
+                        >
+                            Applicants
+                        </button>
                     </div>
+                </div>
+
+                <div className="card-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+                    {subAlertText && (
+                        <div className={`alert ${subAlertType === 'success' ? 'alert-success' : 'alert-danger'}`} style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{subAlertText}</span>
+                            <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: 'auto', color: 'inherit' }} onClick={() => setSubAlertText(null)}>✕</button>
+                        </div>
+                    )}
+
+                    {modalTab === 'details' ? (
+                        <div>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 1.25rem 0' }}>
+                                <span className="badge badge-success">{job.employmentType}</span>
+                                <span className="badge badge-success">{job.experienceRequired} Experience</span>
+                                <span className="badge badge-success">{job.salaryRange}</span>
+                                <span className={`badge ${job.status === 'OPEN' ? 'badge-success' : 'badge-danger'}`}>
+                                    Status: {job.status}
+                                </span>
+                            </div>
+
+                            <div style={{ lineHeight: '1.6', fontSize: '0.9rem' }}>
+                                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.5rem' }}>Job Description:</strong>
+                                <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{job.description}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            {/* Filters & Search for Applicants */}
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+                                <input 
+                                    type="text" 
+                                    className="form-control" 
+                                    placeholder="Search by candidate name..."
+                                    style={{ flex: 1, minWidth: '180px', height: '34px', fontSize: '0.85rem' }}
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && fetchApplicants(0, search, statusFilter)}
+                                />
+                                <select 
+                                    className="form-control" 
+                                    style={{ width: '160px', height: '34px', fontSize: '0.85rem' }}
+                                    value={statusFilter}
+                                    onChange={(e) => {
+                                        setStatusFilter(e.target.value);
+                                        fetchApplicants(0, search, e.target.value);
+                                    }}
+                                >
+                                    <option value="ALL">All Statuses</option>
+                                    <option value="APPLIED">Applied</option>
+                                    <option value="UNDER_REVIEW">Under Review</option>
+                                    <option value="SHORTLISTED">Shortlisted</option>
+                                    <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
+                                    <option value="INTERVIEWED">Interviewed</option>
+                                    <option value="OFFERED">Offered</option>
+                                    <option value="REJECTED">Rejected</option>
+                                    <option value="WITHDRAWN">Withdrawn</option>
+                                </select>
+                                <button className="btn btn-primary btn-sm" style={{ height: '34px' }} onClick={() => fetchApplicants(0, search, statusFilter)}>Filter</button>
+                                <button className="btn btn-secondary btn-sm" style={{ height: '34px' }} onClick={() => {
+                                    setSearch('');
+                                    setStatusFilter('ALL');
+                                    fetchApplicants(0, '', 'ALL');
+                                }}>Reset</button>
+                            </div>
+
+                            {loadingApplicants ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div className="skeleton" style={{ height: '32px' }}></div>
+                                    <div className="skeleton" style={{ height: '32px' }}></div>
+                                    <div className="skeleton" style={{ height: '32px' }}></div>
+                                </div>
+                            ) : applicants.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-secondary)', border: '1px dashed var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)' }}>
+                                    No applicants found for this position.
+                                </div>
+                            ) : (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                        <thead>
+                                            <tr>
+                                                <th>Candidate Name</th>
+                                                <th>Resume</th>
+                                                <th>Applied Date</th>
+                                                <th>Status</th>
+                                                <th style={{ textAlign: 'right' }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {applicants.map(app => (
+                                                <tr key={app.id}>
+                                                    <td style={{ fontWeight: '600' }}>{app.candidateFullName}</td>
+                                                    <td>
+                                                        {app.resumeUrl ? (
+                                                            <button 
+                                                                className="btn btn-secondary btn-sm"
+                                                                style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                                                                onClick={() => handleViewResume(app.resumeUrl)}
+                                                            >
+                                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                                </svg>
+                                                                View
+                                                            </button>
+                                                        ) : (
+                                                            <span style={{ color: 'var(--text-muted)' }}>None</span>
+                                                        )}
+                                                    </td>
+                                                    <td>{new Date(app.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                                    <td>
+                                                        <span className="badge" style={getStatusBadge(app.status)}>
+                                                            {app.status.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ textAlign: 'right' }}>
+                                                        <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                            <button 
+                                                                className="btn btn-primary btn-sm"
+                                                                style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }}
+                                                                onClick={() => {
+                                                                    setUpdatingApp(app);
+                                                                    setNewStatus(app.status);
+                                                                    setNotes('');
+                                                                }}
+                                                            >
+                                                                Status
+                                                            </button>
+                                                            <button 
+                                                                className="btn btn-outline btn-sm"
+                                                                style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }}
+                                                                onClick={() => fetchTimeline(app)}
+                                                            >
+                                                                Timeline
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {appTotalPages > 1 && (
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <Pagination 
+                                                currentPage={appCurrentPage}
+                                                totalPages={appTotalPages}
+                                                onPageChange={(page) => fetchApplicants(page, search, statusFilter)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <div className="card-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                     <button className="btn btn-secondary btn-sm" onClick={onClose} aria-label="Close dialog">Close</button>
                 </div>
             </div>
+
+            {/* Nested Status Update Sub-Modal Overlay */}
+            {updatingApp && (
+                <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={(e) => e.target === e.currentTarget && setUpdatingApp(null)}>
+                    <div className="modal-content" style={{ borderTop: '4px solid var(--primary-color)', maxWidth: '460px' }}>
+                        <div className="card-header" style={{ padding: '1rem 1.25rem' }}>
+                            <h4 className="card-title" style={{ fontSize: '1rem' }}>Update Application Status</h4>
+                            <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setUpdatingApp(null)}>✕</button>
+                        </div>
+                        <div className="card-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                Candidate: <strong style={{ color: 'var(--text-primary)' }}>{updatingApp.candidateFullName}</strong>
+                            </p>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">New Status</label>
+                                <select 
+                                    className="form-control"
+                                    value={newStatus}
+                                    onChange={(e) => setNewStatus(e.target.value)}
+                                >
+                                    <option value="APPLIED">Applied</option>
+                                    <option value="UNDER_REVIEW">Under Review</option>
+                                    <option value="SHORTLISTED">Shortlisted</option>
+                                    <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
+                                    <option value="INTERVIEWED">Interviewed</option>
+                                    <option value="OFFERED">Offered</option>
+                                    <option value="REJECTED">Rejected</option>
+                                    <option value="WITHDRAWN">Withdrawn</option>
+                                </select>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Transition Notes (Optional)</label>
+                                <textarea 
+                                    className="form-control"
+                                    placeholder="Enter details or reason for this status change..."
+                                    rows="3"
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    style={{ fontSize: '0.85rem' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="card-footer" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setUpdatingApp(null)}>Cancel</button>
+                            <button className="btn btn-primary btn-sm" onClick={handleUpdateStatus}>Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Nested Application Timeline Audit History Sub-Modal Overlay */}
+            {timelineApp && (
+                <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={(e) => e.target === e.currentTarget && setTimelineApp(null)}>
+                    <div className="modal-content" style={{ borderTop: '4px solid var(--info-color)', maxWidth: '500px' }}>
+                        <div className="card-header" style={{ padding: '1rem 1.25rem' }}>
+                            <div>
+                                <h4 className="card-title" style={{ fontSize: '1rem' }}>Application History Log</h4>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.15rem' }}>
+                                    Candidate: {timelineApp.candidateFullName}
+                                </p>
+                            </div>
+                            <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setTimelineApp(null)}>✕</button>
+                        </div>
+                        <div className="card-body" style={{ padding: '1.25rem', maxHeight: '380px', overflowY: 'auto' }}>
+                            {loadingTimeline ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <div className="skeleton" style={{ height: '20px' }}></div>
+                                    <div className="skeleton" style={{ height: '20px' }}></div>
+                                    <div className="skeleton" style={{ height: '20px' }}></div>
+                                </div>
+                            ) : timelineHistory.length === 0 ? (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>No audit history records available.</p>
+                            ) : (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    position: 'relative', 
+                                    paddingLeft: '1.25rem', 
+                                    borderLeft: '2px solid var(--border-color)', 
+                                    gap: '1.25rem', 
+                                    margin: '0.5rem' 
+                                }}>
+                                    {timelineHistory.map((item, index) => (
+                                        <div key={item.id} style={{ position: 'relative' }}>
+                                            <div style={{ 
+                                                position: 'absolute', 
+                                                left: '-1.725rem', 
+                                                top: '3px',
+                                                width: '12px', 
+                                                height: '12px', 
+                                                borderRadius: '50%', 
+                                                backgroundColor: index === timelineHistory.length - 1 ? 'var(--primary-color)' : 'var(--border-hover)', 
+                                                border: '2px solid var(--bg-card)'
+                                            }} />
+                                            
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    <span className="badge" style={{ ...getStatusBadge(item.newStatus), fontSize: '0.65rem', padding: '0.15rem 0.35rem' }}>
+                                                        {item.newStatus.replace('_', ' ')}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                        {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                                                    Updated by <strong style={{ color: 'var(--text-primary)' }}>{item.changedByName}</strong> ({item.changedByEmail})
+                                                </span>
+                                                {item.note && (
+                                                    <div style={{ 
+                                                        fontSize: '0.8rem', 
+                                                        color: 'var(--text-secondary)', 
+                                                        backgroundColor: 'var(--bg-secondary)', 
+                                                        padding: '0.4rem 0.6rem', 
+                                                        borderRadius: '4px', 
+                                                        marginTop: '0.25rem', 
+                                                        borderLeft: '2px solid var(--primary-color)' 
+                                                    }}>
+                                                        {item.note}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="card-footer" style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setTimelineApp(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

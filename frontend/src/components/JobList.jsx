@@ -1,7 +1,7 @@
 import React from 'react';
 import JobCard from './JobCard';
 
-const JobList = ({ jobs, onView, onEdit, onDelete, showActions }) => {
+const JobList = ({ jobs, onView, onEdit, onDelete, showActions, onApply, appliedJobIds = new Set() }) => {
     if (!jobs || jobs.length === 0) {
         return (
             <div style={{ 
@@ -39,6 +39,8 @@ const JobList = ({ jobs, onView, onEdit, onDelete, showActions }) => {
                     onEdit={onEdit} 
                     onDelete={onDelete} 
                     showActions={showActions} 
+                    onApply={onApply}
+                    isApplied={appliedJobIds instanceof Set ? appliedJobIds.has(job.id) : (appliedJobIds && typeof appliedJobIds.has === 'function' ? appliedJobIds.has(job.id) : false)}
                 />
             ))}
         </div>

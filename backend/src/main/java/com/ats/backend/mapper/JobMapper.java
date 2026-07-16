@@ -27,4 +27,13 @@ public class JobMapper {
                 .recruiterName(job.getRecruiter().getFullName())
                 .build();
     }
+
+    public JobDto toDto(Job job, long applicantCount) {
+        if (job == null) {
+            return null;
+        }
+        JobDto dto = toDto(job);
+        dto.setApplicantCount(applicantCount);
+        return dto;
+    }
 }

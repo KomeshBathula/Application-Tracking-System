@@ -47,4 +47,6 @@ public class JobDto {
     private Long recruiterId;
     
     private String recruiterName;
+
+    private Long applicantCount;
 }
