@@ -44,110 +44,116 @@ const JobForm = ({ initialData, onSubmit, onCancel, titleText }) => {
     };
 
     return (
-        <div className="dashboard-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>{titleText}</h3>
+        <div className="card" style={{ maxWidth: '680px', margin: '0 auto' }}>
+            <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.15rem' }}>{titleText}</h3>
+            </div>
             
-            {error && <div className="alert alert-danger">{error}</div>}
+            <div className="card-body">
+                {error && <div className="alert alert-danger">⚠ {error}</div>}
 
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label>Job Title</label>
-                    <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. Senior Java Engineer" 
-                        value={title} 
-                        onChange={(e) => setTitle(e.target.value)} 
-                    />
-                </div>
+                <form onSubmit={handleSubmit}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label form-label-required">Job Title</label>
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. Senior Staff Frontend Engineer" 
+                                value={title} 
+                                onChange={(e) => setTitle(e.target.value)} 
+                            />
+                        </div>
 
-                <div className="form-group">
-                    <label>Company Name</label>
-                    <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. Software Services Corp" 
-                        value={company} 
-                        onChange={(e) => setCompany(e.target.value)} 
-                    />
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Company Name</label>
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. Stripe, Inc." 
+                                value={company} 
+                                onChange={(e) => setCompany(e.target.value)} 
+                            />
+                        </div>
 
-                <div className="form-group">
-                    <label>Location</label>
-                    <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. Austin, TX (or Remote)" 
-                        value={location} 
-                        onChange={(e) => setLocation(e.target.value)} 
-                    />
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Location</label>
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. San Francisco, CA (Hybrid)" 
+                                value={location} 
+                                onChange={(e) => setLocation(e.target.value)} 
+                            />
+                        </div>
 
-                <div className="form-group">
-                    <label>Employment Type</label>
-                    <select 
-                        className="form-control" 
-                        value={employmentType} 
-                        onChange={(e) => setEmploymentType(e.target.value)}
-                    >
-                        <option value="Full-time">Full-time</option>
-                        <option value="Part-time">Part-time</option>
-                        <option value="Contract">Contract</option>
-                        <option value="Internship">Internship</option>
-                    </select>
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Employment Type</label>
+                            <select 
+                                className="form-control" 
+                                value={employmentType} 
+                                onChange={(e) => setEmploymentType(e.target.value)}
+                            >
+                                <option value="Full-time">Full-time</option>
+                                <option value="Part-time">Part-time</option>
+                                <option value="Contract">Contract</option>
+                                <option value="Internship">Internship</option>
+                            </select>
+                        </div>
 
-                <div className="form-group">
-                    <label>Experience Required</label>
-                    <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. 5+ years" 
-                        value={experienceRequired} 
-                        onChange={(e) => setExperienceRequired(e.target.value)} 
-                    />
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Experience Required</label>
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. 5+ years" 
+                                value={experienceRequired} 
+                                onChange={(e) => setExperienceRequired(e.target.value)} 
+                            />
+                        </div>
 
-                <div className="form-group">
-                    <label>Salary Range</label>
-                    <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. $100k - $120k" 
-                        value={salaryRange} 
-                        onChange={(e) => setSalaryRange(e.target.value)} 
-                    />
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Salary Range</label>
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="e.g. $140k - $180k" 
+                                value={salaryRange} 
+                                onChange={(e) => setSalaryRange(e.target.value)} 
+                            />
+                        </div>
 
-                <div className="form-group">
-                    <label>Job Status</label>
-                    <select 
-                        className="form-control" 
-                        value={status} 
-                        onChange={(e) => setStatus(e.target.value)}
-                    >
-                        <option value="OPEN">Open</option>
-                        <option value="CLOSED">Closed</option>
-                    </select>
-                </div>
+                        <div className="form-group">
+                            <label className="form-label form-label-required">Job Status</label>
+                            <select 
+                                className="form-control" 
+                                value={status} 
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="OPEN">Open</option>
+                                <option value="CLOSED">Closed</option>
+                            </select>
+                        </div>
 
-                <div className="form-group">
-                    <label>Description</label>
-                    <textarea 
-                        className="form-control" 
-                        rows="6" 
-                        placeholder="Enter full job description..." 
-                        value={description} 
-                        onChange={(e) => setDescription(e.target.value)} 
-                        style={{ resize: 'vertical' }}
-                    />
-                </div>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label form-label-required">Job Description</label>
+                            <textarea 
+                                className="form-control" 
+                                rows="8" 
+                                placeholder="Explain the role, requirements, benefits, and expectations..." 
+                                value={description} 
+                                onChange={(e) => setDescription(e.target.value)} 
+                                style={{ resize: 'vertical' }}
+                            />
+                        </div>
+                    </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-                    <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>Save Job Posting</button>
-                </div>
-            </form>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+                        <button type="submit" className="btn btn-primary btn-sm">Save Job Posting</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };

@@ -2,44 +2,76 @@ import React from 'react';
 
 const JobCard = ({ job, onView, onEdit, onDelete, showActions }) => {
     return (
-        <div className="dashboard-card" style={{ border: '1px solid var(--border-color)', margin: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="card">
+            <div className="card-header" style={{ alignItems: 'flex-start' }}>
                 <div>
-                    <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>{job.title}</h4>
-                    <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                        {job.company} — {job.location}
-                    </p>
+                    <h3 className="card-title" style={{ fontSize: '1.15rem', fontWeight: '600' }}>{job.title}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        <span style={{ fontWeight: 600 }}>{job.company}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>•</span>
+                        <span>{job.location}</span>
+                    </div>
                 </div>
-                <span className="badge" style={{
-                    backgroundColor: job.status === 'OPEN' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: job.status === 'OPEN' ? 'var(--success-color)' : 'var(--danger-color)',
-                    borderColor: job.status === 'OPEN' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
-                }}>
+                <span className={`badge ${job.status === 'OPEN' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
                     {job.status}
                 </span>
             </div>
             
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0.5rem 0', whiteSpace: 'pre-wrap' }}>
-                {job.description && job.description.length > 150 
-                    ? `${job.description.substring(0, 150)}...` 
-                    : job.description}
+            <div className="card-body" style={{ padding: '1.25rem 1.5rem' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {job.description && job.description.length > 200 
+                        ? `${job.description.substring(0, 200)}...` 
+                        : job.description}
+                </p>
+                
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>{job.employmentType}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                            <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+                        </svg>
+                        <span>{job.experienceRequired} Experience</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <span>{job.salaryRange}</span>
+                    </div>
+                </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                <div>
-                    <span style={{ marginRight: '1rem' }}>💼 {job.employmentType}</span>
-                    <span style={{ marginRight: '1rem' }}>🎓 {job.experienceRequired}</span>
-                    <span>💰 {job.salaryRange}</span>
-                </div>
-                {showActions && (
+            <div className="card-footer" style={{ backgroundColor: 'transparent', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                {showActions ? (
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => onView(job)}>View</button>
-                        {onEdit && <button className="btn btn-primary btn-sm" style={{ backgroundColor: 'var(--primary-color)', color: '#fff' }} onClick={() => onEdit(job)}>Edit</button>}
-                        {onDelete && <button className="btn btn-danger btn-sm" style={{ backgroundColor: 'var(--danger-color)', borderColor: 'var(--danger-color)', color: '#fff' }} onClick={() => onDelete(job.id)}>Delete</button>}
+                        <button className="btn btn-secondary btn-sm" onClick={() => onView(job)}>
+                            View Details
+                        </button>
+                        {onEdit && (
+                            <button className="btn btn-outline btn-sm" onClick={() => onEdit(job)}>
+                                Edit
+                            </button>
+                        )}
+                        {onDelete && (
+                            <button className="btn btn-danger btn-sm" onClick={() => onDelete(job.id)}>
+                                Delete
+                            </button>
+                        )}
                     </div>
-                )}
-                {!showActions && onView && (
-                    <button className="btn btn-primary btn-sm" onClick={() => onView(job)}>View Details</button>
+                ) : (
+                    onView && (
+                        <button className="btn btn-primary btn-sm" onClick={() => onView(job)}>
+                            View Details
+                        </button>
+                    )
                 )}
             </div>
         </div>

@@ -16,6 +16,7 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        document.title = "Recruiter Registration - ATS";
         if (user) {
             navigate('/recruiter/dashboard');
         }
@@ -73,91 +74,125 @@ const Register = () => {
     };
 
     return (
-        <div className="auth-card-container">
-            {/* Theme toggle in top right corner */}
-            <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
-                <ThemeToggle />
+        <div className="auth-split-container">
+            {/* Split Sidebar panel */}
+            <div className="auth-split-sidebar" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div style={{ maxWidth: '400px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700, fontSize: '1.25rem', marginBottom: '4rem' }}>
+                        <div className="sidebar-brand-icon" style={{ width: '32px', height: '32px', fontSize: '0.9rem', backgroundColor: 'var(--success-color)' }}>▲</div>
+                        <span style={{ color: 'var(--text-primary)' }}>ATS Portal</span>
+                    </div>
+                    
+                    <h2 style={{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
+                        Scale your team with advanced hiring tools.
+                    </h2>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '2rem' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <span style={{ color: 'var(--success-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Publish jobs dynamically to candidates.</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <span style={{ color: 'var(--success-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Manage candidate application pipelines seamlessly.</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <span style={{ color: 'var(--success-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Filter candidates using high-speed query selectors.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="auth-card" style={{ borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-                <h2>Recruiter Sign Up</h2>
-                <p className="subtitle">Register a company account to start posting openings</p>
+            {/* Split Form panel */}
+            <div className="auth-split-content">
+                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
+                    <ThemeToggle />
+                </div>
 
-                {successMessage && (
-                    <div className="alert alert-success" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <span>{successMessage}</span>
-                        <Link to="/recruiter/login" className="btn" style={{ backgroundColor: '#10b981', color: '#fff', textAlign: 'center', textDecoration: 'none' }}>
-                            Go to Sign In
-                        </Link>
+                <div style={{ width: '100%', maxWidth: '360px', margin: '0 auto' }}>
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Recruiter Register</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Create a company account to start posting openings</p>
                     </div>
-                )}
 
-                {!successMessage && (
-                    <>
-                        {apiError && (
-                            <div className="alert alert-danger">
-                                {apiError}
-                            </div>
-                        )}
+                    {successMessage && (
+                        <div className="alert alert-success" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <span>{successMessage}</span>
+                            <Link to="/recruiter/login" className="btn btn-block" style={{ backgroundColor: 'var(--success-color)', color: '#fff', textAlign: 'center', textDecoration: 'none' }}>
+                                Go to Sign In
+                            </Link>
+                        </div>
+                    )}
 
-                        {validationError && (
-                            <div className="alert alert-danger">
-                                {validationError}
-                            </div>
-                        )}
+                    {!successMessage && (
+                        <>
+                            {apiError && (
+                                <div className="alert alert-danger">
+                                    {apiError}
+                                </div>
+                            )}
 
-                        <form onSubmit={handleSubmit} noValidate>
-                            <div className="form-group">
-                                <label htmlFor="fullName">Full Name</label>
-                                <input
-                                    type="text"
-                                    id="fullName"
-                                    className="form-control"
-                                    placeholder="Enter your name"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                />
-                            </div>
+                            {validationError && (
+                                <div className="alert alert-danger">
+                                    {validationError}
+                                </div>
+                            )}
 
-                            <div className="form-group">
-                                <label htmlFor="email">Work Email Address</label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    className="form-control"
-                                    placeholder="e.g. hiring@company.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
-                            </div>
+                            <form onSubmit={handleSubmit} noValidate>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="fullName">Full Name</label>
+                                    <input
+                                        type="text"
+                                        id="fullName"
+                                        className="form-control"
+                                        placeholder="Enter your name"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label htmlFor="password">Password</label>
-                                <input
-                                    type="password"
-                                    id="password"
-                                    className="form-control"
-                                    placeholder="Minimum 6 characters"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </div>
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="email">Work Email Address</label>
+                                    <input
+                                        type="email"
+                                        id="email"
+                                        className="form-control"
+                                        placeholder="e.g. hiring@company.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                </div>
 
-                            <button
-                                type="submit"
-                                className="btn btn-block"
-                                style={{ backgroundColor: '#10b981', color: '#fff' }}
-                                disabled={loading}
-                            >
-                                {loading ? 'Registering...' : 'Register'}
-                            </button>
-                        </form>
-                    </>
-                )}
+                                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                                    <label className="form-label" htmlFor="password">Password</label>
+                                    <input
+                                        type="password"
+                                        id="password"
+                                        className="form-control"
+                                        placeholder="Minimum 6 characters"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                </div>
 
-                <p className="auth-footer" style={{ marginTop: successMessage ? '1rem' : '1.5rem' }}>
-                    Already have an account? <Link to="/recruiter/login" style={{ color: '#10b981' }}>Sign In</Link>
-                </p>
+                                <button
+                                    type="submit"
+                                    className="btn btn-block"
+                                    style={{ backgroundColor: 'var(--success-color)', color: '#fff' }}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Registering...' : 'Register'}
+                                </button>
+                            </form>
+                        </>
+                    )}
+
+                    <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Already have an account? </span>
+                        <Link to="/recruiter/login" style={{ color: 'var(--success-color)', fontWeight: 600 }}>Sign In</Link>
+                    </div>
+                </div>
             </div>
         </div>
     );
