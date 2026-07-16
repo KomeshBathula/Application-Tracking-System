@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import AppLayout from '../../components/AppLayout';
 import api from '../../services/api';
@@ -44,12 +44,17 @@ const Dashboard = () => {
     // Alerts state (custom toasts)
     const [alertText, setAlertText] = useState(null);
     const [alertType, setAlertType] = useState('success');
+    const notificationTimeoutRef = useRef(null);
 
     const showNotification = (text, type = 'success') => {
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+        }
         setAlertText(text);
         setAlertType(type);
-        setTimeout(() => {
+        notificationTimeoutRef.current = setTimeout(() => {
             setAlertText(null);
+            notificationTimeoutRef.current = null;
         }, 5000);
     };
 
@@ -196,15 +201,30 @@ const Dashboard = () => {
 
     const loadAppliedIds = async () => {
         try {
-            const res = await api.get('/applications/me', { params: { size: 100 } });
-            if (res.data && res.data.success) {
-                const ids = new Set(
-                    res.data.data.content
-                        .filter(app => app.status !== 'WITHDRAWN')
-                        .map(app => app.jobId)
-                );
-                setAppliedJobIds(ids);
+            let allAppliedJobs = [];
+            let currentPageNum = 0;
+            let hasMore = true;
+
+            while (hasMore) {
+                const res = await api.get('/applications/me', { params: { page: currentPageNum, size: 100 } });
+                if (res.data && res.data.success && res.data.data.content) {
+                    allAppliedJobs = [...allAppliedJobs, ...res.data.data.content];
+                    if (res.data.data.last) {
+                        hasMore = false;
+                    } else {
+                        currentPageNum++;
+                    }
+                } else {
+                    hasMore = false;
+                }
             }
+
+            const ids = new Set(
+                allAppliedJobs
+                    .filter(app => app.status !== 'WITHDRAWN')
+                    .map(app => app.jobId)
+            );
+            setAppliedJobIds(ids);
         } catch (err) {
             console.error('Error loading applied job IDs:', err);
         }
@@ -600,12 +620,14 @@ const Dashboard = () => {
                                                         >
                                                             Timeline
                                                         </button>
-                                                        <button 
-                                                            className="btn btn-danger btn-sm"
-                                                            onClick={() => setAppToWithdraw(app)}
-                                                        >
-                                                            Withdraw
-                                                        </button>
+                                                        {app.status !== 'WITHDRAWN' && (
+                                                            <button 
+                                                                className="btn btn-danger btn-sm"
+                                                                onClick={() => setAppToWithdraw(app)}
+                                                            >
+                                                                Withdraw
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -854,7 +876,7 @@ const Dashboard = () => {
                         <div className="card-body" style={{ padding: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                             <p>Are you sure you want to withdraw your application for <strong style={{ color: 'var(--text-primary)' }}>{appToWithdraw.jobTitle}</strong> at <strong style={{ color: 'var(--text-primary)' }}>{appToWithdraw.company}</strong>?</p>
                             <p style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', borderLeft: '3px solid var(--status-rejected)', fontSize: '0.85rem' }}>
-                                ⚠️ <strong>Warning:</strong> This action cannot be undone. You will lose your application status and history.
+                                ℹ️ <strong>Note:</strong> Your application will be marked as withdrawn. Recruiters will be notified of the withdrawal, and you can re-apply to this position at any time.
                             </p>
                         </div>
                         <div className="card-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

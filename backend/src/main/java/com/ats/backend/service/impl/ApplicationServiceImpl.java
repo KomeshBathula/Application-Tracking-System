@@ -69,55 +69,59 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new InvalidRequestException("You cannot apply to a closed job.");
         }
 
-        // Validation: Prevent duplicate applications (Duplicate Application Protection)
-        java.util.Optional<Application> existingAppOpt = applicationRepository.findByJobIdAndCandidateId(jobId, candidate.getId());
-        if (existingAppOpt.isPresent()) {
-            Application existingApp = existingAppOpt.get();
-            if (existingApp.getStatus() == ApplicationStatus.WITHDRAWN) {
-                // Reactivate application
-                existingApp.setStatus(ApplicationStatus.APPLIED);
-                existingApp.setResumeUrl(candidate.getResumeUrl());
-                Application savedApplication = applicationRepository.save(existingApp);
+        try {
+            // Validation: Prevent duplicate applications (Duplicate Application Protection)
+            java.util.Optional<Application> existingAppOpt = applicationRepository.findByJobIdAndCandidateId(jobId, candidate.getId());
+            if (existingAppOpt.isPresent()) {
+                Application existingApp = existingAppOpt.get();
+                if (existingApp.getStatus() == ApplicationStatus.WITHDRAWN) {
+                    // Reactivate application
+                    existingApp.setStatus(ApplicationStatus.APPLIED);
+                    existingApp.setResumeUrl(candidate.getResumeUrl());
+                    Application savedApplication = applicationRepository.saveAndFlush(existingApp);
 
-                // Audit Trail: Create history record
-                ApplicationStatusHistory history = ApplicationStatusHistory.builder()
-                        .application(savedApplication)
-                        .previousStatus(ApplicationStatus.WITHDRAWN)
-                        .newStatus(ApplicationStatus.APPLIED)
-                        .changedBy(candidate)
-                        .note("Application re-submitted after withdrawal.")
-                        .build();
+                    // Audit Trail: Create history record
+                    ApplicationStatusHistory history = ApplicationStatusHistory.builder()
+                            .application(savedApplication)
+                            .previousStatus(ApplicationStatus.WITHDRAWN)
+                            .newStatus(ApplicationStatus.APPLIED)
+                            .changedBy(candidate)
+                            .note("Application re-submitted after withdrawal.")
+                            .build();
 
-                statusHistoryRepository.save(history);
+                    statusHistoryRepository.saveAndFlush(history);
 
-                return applicationMapper.toDto(savedApplication);
-            } else {
-                throw new ConflictException("You have already applied to this job.");
+                    return applicationMapper.toDto(savedApplication);
+                } else {
+                    throw new ConflictException("You have already applied to this job.");
+                }
             }
+
+            // Create Application (Resume snapshot taken at time of application)
+            Application application = Application.builder()
+                    .candidate(candidate)
+                    .job(job)
+                    .resumeUrl(candidate.getResumeUrl())
+                    .status(ApplicationStatus.APPLIED)
+                    .build();
+
+            Application savedApplication = applicationRepository.saveAndFlush(application);
+
+            // Audit Trail: Create initial history record
+            ApplicationStatusHistory history = ApplicationStatusHistory.builder()
+                    .application(savedApplication)
+                    .previousStatus(null)
+                    .newStatus(ApplicationStatus.APPLIED)
+                    .changedBy(candidate)
+                    .note("Application submitted.")
+                    .build();
+
+            statusHistoryRepository.saveAndFlush(history);
+
+            return applicationMapper.toDto(savedApplication);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new ConflictException("You have already applied to this job.");
         }
-
-        // Create Application (Resume snapshot taken at time of application)
-        Application application = Application.builder()
-                .candidate(candidate)
-                .job(job)
-                .resumeUrl(candidate.getResumeUrl())
-                .status(ApplicationStatus.APPLIED)
-                .build();
-
-        Application savedApplication = applicationRepository.save(application);
-
-        // Audit Trail: Create initial history record
-        ApplicationStatusHistory history = ApplicationStatusHistory.builder()
-                .application(savedApplication)
-                .previousStatus(null)
-                .newStatus(ApplicationStatus.APPLIED)
-                .changedBy(candidate)
-                .note("Application submitted.")
-                .build();
-
-        statusHistoryRepository.save(history);
-
-        return applicationMapper.toDto(savedApplication);
     }
 
     @Override
@@ -145,12 +149,16 @@ public class ApplicationServiceImpl implements ApplicationService {
         Application savedApplication = applicationRepository.save(application);
 
         // Audit Trail: Create history record
+        String noteText = (candidate.getRole().getRoleName() == RoleName.ROLE_ADMIN)
+                ? "Application withdrawn by administrator (" + candidate.getFullName() + ")."
+                : "Application withdrawn by candidate.";
+
         ApplicationStatusHistory history = ApplicationStatusHistory.builder()
                 .application(savedApplication)
                 .previousStatus(previousStatus)
                 .newStatus(ApplicationStatus.WITHDRAWN)
                 .changedBy(candidate)
-                .note("Application withdrawn by candidate.")
+                .note(noteText)
                 .build();
 
         statusHistoryRepository.save(history);
@@ -177,6 +185,10 @@ public class ApplicationServiceImpl implements ApplicationService {
         // Validation: Prevent invalid status transitions
         if (previousStatus == ApplicationStatus.WITHDRAWN) {
             throw new InvalidRequestException("Cannot update the status of a withdrawn application.");
+        }
+
+        if (newStatus == ApplicationStatus.WITHDRAWN) {
+            throw new InvalidRequestException("Recruiters cannot manually set status to WITHDRAWN. Only candidates may withdraw their applications.");
         }
 
         if (previousStatus == newStatus) {
@@ -228,6 +240,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     @Transactional(readOnly = true)
     public Page<ApplicationDto> getCandidateApplications(String candidateEmail, String status, String search, int page, int size, String sortBy, String sortDir) {
+        validateApplicationSortField(sortBy);
         User candidate = userRepository.findByEmail(candidateEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidate not found: " + candidateEmail));
 
@@ -254,6 +267,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     @Transactional(readOnly = true)
     public Page<ApplicationDto> getJobApplications(Long jobId, String recruiterEmail, String status, String search, int page, int size, String sortBy, String sortDir) {
+        validateApplicationSortField(sortBy);
         User user = userRepository.findByEmail(recruiterEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + recruiterEmail));
 
@@ -284,5 +298,12 @@ public class ApplicationServiceImpl implements ApplicationService {
                 jobId, statusEnum, searchPattern, pageable);
 
         return applicationsPage.map(applicationMapper::toDto);
+    }
+
+    private void validateApplicationSortField(String sortBy) {
+        java.util.Set<String> allowedFields = java.util.Set.of("id", "createdAt", "updatedAt", "status");
+        if (!allowedFields.contains(sortBy)) {
+            throw new InvalidRequestException("Invalid sort field. Allowed fields: " + String.join(", ", allowedFields));
+        }
     }
 }

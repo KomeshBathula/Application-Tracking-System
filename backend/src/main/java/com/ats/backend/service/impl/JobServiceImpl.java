@@ -146,7 +146,15 @@ public class JobServiceImpl implements JobService {
                 pageable
         );
 
-        return jobsPage.map(job -> jobMapper.toDto(job, applicationRepository.countByJobId(job.getId())));
+        List<Long> jobIds = jobsPage.getContent().stream().map(Job::getId).collect(java.util.stream.Collectors.toList());
+        Map<Long, Long> countsMap = jobIds.isEmpty() ? new HashMap<>() :
+                applicationRepository.countByJobIds(jobIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> (Long) row[1]
+                        ));
+
+        return jobsPage.map(job -> jobMapper.toDto(job, countsMap.getOrDefault(job.getId(), 0L)));
     }
 
     @Override
