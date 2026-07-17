@@ -1,10 +1,162 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import api from '../services/api';
+
+const formatTimeAgo = (dateString) => {
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch (e) {
+        return '';
+    }
+};
+
+const getNotificationIcon = (type) => {
+    switch (type) {
+        case 'APPLICATION_SUBMITTED':
+            return (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+            );
+        case 'APPLICATION_STATUS_UPDATED':
+            return (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            );
+        case 'INTERVIEW_SCHEDULED':
+            return (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            );
+        default:
+            return (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+            );
+    }
+};
 
 const AppLayout = ({ children, activeTab, setActiveTab, navigationItems, roleTitle, roleColor }) => {
     const { user, logout } = useContext(AuthContext);
     const [collapsed, setCollapsed] = useState(false);
+    
+    // Notifications State
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [panelOpen, setPanelOpen] = useState(false);
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
+    const [notificationsError, setNotificationsError] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const fetchUnreadCount = async () => {
+        try {
+            const res = await api.get('/notifications/unread-count');
+            if (res.data && res.data.success) {
+                setUnreadCount(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching unread count:', err);
+        }
+    };
+
+    const fetchNotifications = async () => {
+        setLoadingNotifications(true);
+        setNotificationsError(false);
+        try {
+            const res = await api.get('/notifications', { params: { page: 0, size: 10 } });
+            if (res.data && res.data.success && res.data.data.content) {
+                setNotifications(res.data.data.content);
+            } else {
+                setNotificationsError(true);
+            }
+        } catch (err) {
+            console.error('Error fetching notifications:', err);
+            setNotificationsError(true);
+        } finally {
+            setLoadingNotifications(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchUnreadCount();
+            
+            // Poll for unread notifications count every 30 seconds
+            const interval = setInterval(fetchUnreadCount, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setPanelOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const togglePanel = () => {
+        if (!panelOpen) {
+            fetchNotifications();
+            fetchUnreadCount();
+        }
+        setPanelOpen(!panelOpen);
+    };
+
+    const handleNotificationClick = async (notification) => {
+        if (!notification.readStatus) {
+            try {
+                await api.patch(`/notifications/${notification.id}/read`);
+                setUnreadCount(prev => Math.max(0, prev - 1));
+                setNotifications(prev => 
+                    prev.map(n => n.id === notification.id ? { ...n, readStatus: true } : n)
+                );
+            } catch (err) {
+                console.error('Error marking notification as read:', err);
+            }
+        }
+        setPanelOpen(false);
+        if (notification.navigationUrl) {
+            window.location.href = notification.navigationUrl;
+        }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await api.patch('/notifications/read-all');
+            setUnreadCount(0);
+            setNotifications(prev => prev.map(n => ({ ...n, readStatus: true })));
+        } catch (err) {
+            console.error('Error marking all as read:', err);
+        }
+    };
 
     return (
         <div className="app-container">
@@ -92,6 +244,70 @@ const AppLayout = ({ children, activeTab, setActiveTab, navigationItems, roleTit
                     </div>
                     <div className="topbar-right">
                         <ThemeToggle />
+                        
+                        {/* Notification Bell */}
+                        <div className="notification-container" ref={dropdownRef}>
+                            <button className="notification-bell-btn" onClick={togglePanel} title="Notifications">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                                {unreadCount > 0 && (
+                                    <span className="notification-badge">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {panelOpen && (
+                                <div className="notification-dropdown">
+                                    <div className="notification-dropdown-header">
+                                        <span className="notification-dropdown-title">Notifications</span>
+                                        {unreadCount > 0 && (
+                                            <button className="notification-dropdown-action" onClick={handleMarkAllAsRead}>
+                                                Mark all as read
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="notification-list">
+                                        {loadingNotifications ? (
+                                            <div className="notification-empty">
+                                                <span className="notification-empty-icon">⏳</span>
+                                                <span>Loading notifications...</span>
+                                            </div>
+                                        ) : notificationsError ? (
+                                            <div className="notification-empty">
+                                                <span className="notification-empty-icon">⚠️</span>
+                                                <span>Failed to load notifications.</span>
+                                            </div>
+                                        ) : notifications.length === 0 ? (
+                                            <div className="notification-empty">
+                                                <span className="notification-empty-icon">🔔</span>
+                                                <span>You're all caught up!</span>
+                                            </div>
+                                        ) : (
+                                            notifications.map(n => (
+                                                <button 
+                                                    key={n.id} 
+                                                    className={`notification-item ${!n.readStatus ? 'unread' : ''}`}
+                                                    onClick={() => handleNotificationClick(n)}
+                                                >
+                                                    <div className="notification-item-icon">
+                                                        {getNotificationIcon(n.notificationType)}
+                                                    </div>
+                                                    <div className="notification-item-content">
+                                                        <div className="notification-item-title">{n.title}</div>
+                                                        <div className="notification-item-message">{n.message}</div>
+                                                        <div className="notification-item-time">{formatTimeAgo(n.createdAt)}</div>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <span className="badge" style={{ 
                             backgroundColor: roleColor?.startsWith('var(') ? roleColor.replace('color)', 'light)') : (roleColor ? roleColor + '1a' : undefined), 
                             color: roleColor, 

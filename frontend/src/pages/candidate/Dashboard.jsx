@@ -82,7 +82,11 @@ const Dashboard = () => {
         setResumeMessage({ type: '', text: '' });
 
         try {
-            const res = await api.post('/candidate/resume', formData);
+            const res = await api.post('/candidate/resume', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
 
             if (res.data && res.data.success) {
                 setUser(res.data.data);

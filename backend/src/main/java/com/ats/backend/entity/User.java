@@ -47,4 +47,15 @@ public class User {
 
     @Column(name = "resume_url", length = 1000)
     private String resumeUrl;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "resume_data", columnDefinition = "LONGBLOB")
+    private byte[] resumeData;
+
+    @Column(name = "resume_filename")
+    private String resumeFilename;
+
+    @Column(name = "resume_content_type")
+    private String resumeContentType;
 }

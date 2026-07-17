@@ -79,38 +79,19 @@ public class CandidateController {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            user.setResumeData(file.getBytes());
+            user.setResumeFilename(originalFilename);
+            user.setResumeContentType(contentType);
 
             String cleanFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
             String filename = user.getId() + "_" + System.currentTimeMillis() + "_" + cleanFilename;
-            Path filePath = uploadPath.resolve(filename);
-
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            // Clean up previous resume file if it exists to avoid orphaned files
-            String oldResumeUrl = user.getResumeUrl();
-            if (oldResumeUrl != null && !oldResumeUrl.isEmpty()) {
-                try {
-                    String oldFilename = oldResumeUrl.substring(oldResumeUrl.lastIndexOf('/') + 1);
-                    Path oldFilePath = uploadPath.resolve(oldFilename).normalize();
-                    if (oldFilePath.startsWith(uploadPath.normalize()) && Files.exists(oldFilePath)) {
-                        Files.delete(oldFilePath);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Warning: Failed to delete old resume file: " + e.getMessage());
-                }
-            }
-
             String resumeUrl = "/api/resumes/" + filename;
             user.setResumeUrl(resumeUrl);
             User savedUser = userRepository.save(user);
 
             return ResponseEntity.ok(ApiResponse.success("Resume uploaded successfully", userMapper.toDto(savedUser)));
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store resume file: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to read resume file: " + e.getMessage(), e);
         }
     }
 }

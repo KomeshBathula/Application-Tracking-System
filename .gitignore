@@ -1,2 +1,42 @@
-# Test files
+# Security Credentials / Sensitive Environment Vars
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build directories
+target/
+build/
+dist/
+out/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.classpath
+.project
+.settings/
+bin/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Application Logs & Temp Files
+*.log
+temp/
+tmp/
 test_resume.pdf

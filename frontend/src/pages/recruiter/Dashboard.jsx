@@ -507,6 +507,7 @@ const Dashboard = () => {
 
 const ViewJobDetailsModal = ({ job, onClose }) => {
     const dialogRef = React.useRef(null);
+    const subDialogRef = React.useRef(null);
     const closeButtonRef = React.useRef(null);
     
     const [modalTab, setModalTab] = React.useState('details');
@@ -523,11 +524,13 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     const [updatingApp, setUpdatingApp] = React.useState(null);
     const [newStatus, setNewStatus] = React.useState('');
     const [notes, setNotes] = React.useState('');
+    const [isSavingStatus, setIsSavingStatus] = React.useState(false);
     
     // Timeline states
     const [timelineApp, setTimelineApp] = React.useState(null);
     const [timelineHistory, setTimelineHistory] = React.useState([]);
     const [loadingTimeline, setLoadingTimeline] = React.useState(false);
+    const latestRequestRef = React.useRef(0);
 
     // Alert toast states
     const [subAlertText, setSubAlertText] = React.useState(null);
@@ -542,6 +545,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     };
 
     const fetchApplicants = async (page = 0, searchVal = search, statusVal = statusFilter) => {
+        const requestId = ++latestRequestRef.current;
         setLoadingApplicants(true);
         try {
             const params = {
@@ -557,20 +561,33 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                 delete params.search;
             }
             const res = await api.get(`/applications/job/${job.id}`, { params });
+            if (requestId !== latestRequestRef.current) {
+                return; // Stale request, ignore response
+            }
             if (res.data && res.data.success) {
                 setApplicants(res.data.data.content);
                 setAppTotalPages(res.data.data.totalPages);
                 setAppCurrentPage(res.data.data.number);
             }
         } catch (err) {
-            console.error('Error fetching applicants:', err);
-            showSubNotification('Failed to fetch applicants list.', 'error');
+            if (requestId === latestRequestRef.current) {
+                console.error('Error fetching applicants:', err);
+                showSubNotification('Failed to fetch applicants list.', 'error');
+            }
         } finally {
-            setLoadingApplicants(false);
+            if (requestId === latestRequestRef.current) {
+                setLoadingApplicants(false);
+            }
         }
     };
 
     const handleUpdateStatus = async () => {
+        if (isSavingStatus) return;
+        if (updatingApp && newStatus === updatingApp.status) {
+            showSubNotification('Please select a new status to save changes.', 'error');
+            return;
+        }
+        setIsSavingStatus(true);
         try {
             const res = await api.patch(`/applications/${updatingApp.id}/status`, {
                 status: newStatus,
@@ -587,6 +604,8 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
         } catch (err) {
             const msg = err.response?.data?.message || 'Failed to update application status.';
             showSubNotification(msg, 'error');
+        } finally {
+            setIsSavingStatus(false);
         }
     };
 
@@ -660,7 +679,9 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
                 if (updatingApp) {
-                    setUpdatingApp(null);
+                    if (!isSavingStatus) {
+                        setUpdatingApp(null);
+                    }
                 } else if (timelineApp) {
                     setTimelineApp(null);
                 } else {
@@ -672,8 +693,10 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
         const handleKeyDownTrap = (e) => {
             if (e.key === 'Tab') {
-                if (!dialogRef.current) return;
-                const focusableElements = dialogRef.current.querySelectorAll(
+                const activeContainer = updatingApp ? subDialogRef.current : dialogRef.current;
+                if (!activeContainer) return;
+                
+                const focusableElements = activeContainer.querySelectorAll(
                     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
                 );
                 if (focusableElements.length === 0) return;
@@ -694,14 +717,22 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
             }
         };
         
-        const modalContainer = dialogRef.current;
-        modalContainer?.addEventListener('keydown', handleKeyDownTrap);
+        window.addEventListener('keydown', handleKeyDownTrap);
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            modalContainer?.removeEventListener('keydown', handleKeyDownTrap);
+            window.removeEventListener('keydown', handleKeyDownTrap);
         };
-    }, [onClose, updatingApp, timelineApp]);
+    }, [onClose, updatingApp, timelineApp, isSavingStatus]);
+
+    React.useEffect(() => {
+        if (updatingApp && subDialogRef.current) {
+            const firstInput = subDialogRef.current.querySelector('button, select, textarea, input');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+    }, [updatingApp]);
 
     return (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -776,41 +807,75 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                     ) : (
                         <div>
                             {/* Filters & Search for Applicants */}
-                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-                                <input 
-                                    type="text" 
-                                    className="form-control" 
-                                    placeholder="Search by candidate name..."
-                                    style={{ flex: 1, minWidth: '180px', height: '34px', fontSize: '0.85rem' }}
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && fetchApplicants(0, search, statusFilter)}
-                                />
-                                <select 
-                                    className="form-control" 
-                                    style={{ width: '160px', height: '34px', fontSize: '0.85rem' }}
-                                    value={statusFilter}
-                                    onChange={(e) => {
-                                        setStatusFilter(e.target.value);
-                                        fetchApplicants(0, search, e.target.value);
-                                    }}
-                                >
-                                    <option value="ALL">All Statuses</option>
-                                    <option value="APPLIED">Applied</option>
-                                    <option value="UNDER_REVIEW">Under Review</option>
-                                    <option value="SHORTLISTED">Shortlisted</option>
-                                    <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
-                                    <option value="INTERVIEWED">Interviewed</option>
-                                    <option value="OFFERED">Offered</option>
-                                    <option value="REJECTED">Rejected</option>
-                                    <option value="WITHDRAWN">Withdrawn</option>
-                                </select>
-                                <button className="btn btn-primary btn-sm" style={{ height: '34px' }} onClick={() => fetchApplicants(0, search, statusFilter)}>Filter</button>
-                                <button className="btn btn-secondary btn-sm" style={{ height: '34px' }} onClick={() => {
-                                    setSearch('');
-                                    setStatusFilter('ALL');
-                                    fetchApplicants(0, '', 'ALL');
-                                }}>Reset</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                    <input 
+                                        type="text" 
+                                        className="form-control" 
+                                        placeholder="Search by candidate name..."
+                                        style={{ flex: 1, minWidth: '180px', height: '34px', fontSize: '0.85rem' }}
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && fetchApplicants(0, search, statusFilter)}
+                                    />
+                                    <button className="btn btn-primary btn-sm" style={{ height: '34px' }} onClick={() => fetchApplicants(0, search, statusFilter)}>Search</button>
+                                    <button className="btn btn-secondary btn-sm" style={{ height: '34px' }} onClick={() => {
+                                        setSearch('');
+                                        setStatusFilter('ALL');
+                                        fetchApplicants(0, '', 'ALL');
+                                    }}>Reset</button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.25rem' }}>Status:</span>
+                                    {[
+                                        { value: 'ALL', label: 'All', color: 'var(--primary-color)', bg: 'rgba(15, 110, 94, 0.08)' },
+                                        { value: 'APPLIED', label: 'Applied', color: 'var(--status-applied)', bg: 'rgba(52, 168, 83, 0.08)' },
+                                        { value: 'UNDER_REVIEW', label: 'Under Review', color: 'var(--status-review)', bg: 'rgba(251, 188, 5, 0.08)' },
+                                        { value: 'SHORTLISTED', label: 'Shortlisted', color: 'var(--info-color)', bg: 'rgba(26, 115, 232, 0.08)' },
+                                        { value: 'INTERVIEW_SCHEDULED', label: 'Interview Scheduled', color: 'var(--status-interview)', bg: 'rgba(232, 115, 26, 0.08)' },
+                                        { value: 'INTERVIEWED', label: 'Interviewed', color: 'var(--primary-color)', bg: 'rgba(15, 110, 94, 0.08)' },
+                                        { value: 'OFFERED', label: 'Offered', color: 'var(--status-offered)', bg: 'rgba(15, 110, 94, 0.08)' },
+                                        { value: 'REJECTED', label: 'Rejected', color: 'var(--status-rejected)', bg: 'rgba(217, 48, 37, 0.08)' },
+                                        { value: 'WITHDRAWN', label: 'Withdrawn', color: 'var(--text-muted)', bg: 'rgba(128, 128, 128, 0.08)' }
+                                    ].map(opt => {
+                                        const isSelected = statusFilter === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => {
+                                                    setStatusFilter(opt.value);
+                                                    fetchApplicants(0, search, opt.value);
+                                                }}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    padding: '0.35rem 0.65rem',
+                                                    borderRadius: '20px',
+                                                    border: isSelected ? `1.5px solid ${opt.color}` : '1px solid var(--border-color)',
+                                                    backgroundColor: isSelected ? opt.bg : 'transparent',
+                                                    color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                    fontWeight: isSelected ? '600' : '400',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                {opt.value !== 'ALL' && (
+                                                    <span style={{ 
+                                                        width: '6px', 
+                                                        height: '6px', 
+                                                        borderRadius: '50%', 
+                                                        backgroundColor: opt.color, 
+                                                        marginRight: '6px',
+                                                        display: 'inline-block'
+                                                    }} />
+                                                )}
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             {loadingApplicants ? (
@@ -910,49 +975,146 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
             {/* Nested Status Update Sub-Modal Overlay */}
             {updatingApp && (
-                <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={(e) => e.target === e.currentTarget && setUpdatingApp(null)}>
-                    <div className="modal-content" style={{ borderTop: '4px solid var(--primary-color)', maxWidth: '460px' }}>
-                        <div className="card-header" style={{ padding: '1rem 1.25rem' }}>
-                            <h4 className="card-title" style={{ fontSize: '1rem' }}>Update Application Status</h4>
-                            <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setUpdatingApp(null)}>✕</button>
-                        </div>
-                        <div className="card-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                Candidate: <strong style={{ color: 'var(--text-primary)' }}>{updatingApp.candidateFullName}</strong>
-                            </p>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">New Status</label>
-                                <select 
-                                    className="form-control"
-                                    value={newStatus}
-                                    onChange={(e) => setNewStatus(e.target.value)}
-                                >
-                                    <option value="APPLIED">Applied</option>
-                                    <option value="UNDER_REVIEW">Under Review</option>
-                                    <option value="SHORTLISTED">Shortlisted</option>
-                                    <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
-                                    <option value="INTERVIEWED">Interviewed</option>
-                                    <option value="OFFERED">Offered</option>
-                                    <option value="REJECTED">Rejected</option>
-                                    <option value="WITHDRAWN">Withdrawn</option>
-                                </select>
+                <div 
+                    className="modal-backdrop" 
+                    style={{ zIndex: 1100 }} 
+                    onClick={(e) => e.target === e.currentTarget && !isSavingStatus && setUpdatingApp(null)}
+                >
+                    <div 
+                        ref={subDialogRef} 
+                        className="modal-content" 
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="submodal-title"
+                        style={{ borderTop: '4px solid var(--primary-color)', maxWidth: '460px' }}
+                    >
+                        {isSavingStatus ? (
+                            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                                <style>{`
+                                    @keyframes spin {
+                                        0% { transform: rotate(0deg); }
+                                        100% { transform: rotate(360deg); }
+                                    }
+                                `}</style>
+                                <div style={{ 
+                                    width: '42px', 
+                                    height: '42px', 
+                                    border: '4px solid var(--border-color)', 
+                                    borderTop: '4px solid var(--primary-color)', 
+                                    borderRadius: '50%', 
+                                    animation: 'spin 1s linear infinite' 
+                                }}></div>
+                                <h4 style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>Updating Application Status</h4>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Please wait while we notify the candidate...</p>
                             </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Transition Notes (Optional)</label>
-                                <textarea 
-                                    className="form-control"
-                                    placeholder="Enter details or reason for this status change..."
-                                    rows="3"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    style={{ fontSize: '0.85rem' }}
-                                />
-                            </div>
-                        </div>
-                        <div className="card-footer" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-                            <button className="btn btn-secondary btn-sm" onClick={() => setUpdatingApp(null)}>Cancel</button>
-                            <button className="btn btn-primary btn-sm" onClick={handleUpdateStatus}>Save Changes</button>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="card-header" style={{ padding: '1rem 1.25rem' }}>
+                                    <h4 id="submodal-title" className="card-title" style={{ fontSize: '1rem' }}>Update Application Status</h4>
+                                    <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setUpdatingApp(null)}>✕</button>
+                                </div>
+                                <div className="card-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        Candidate: <strong style={{ color: 'var(--text-primary)' }}>{updatingApp.candidateFullName}</strong>
+                                    </p>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block', fontWeight: 600 }}>Select New Status</label>
+                                        <div style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                                            gap: '0.5rem', 
+                                            marginTop: '0.25rem' 
+                                        }}>
+                                            {[
+                                                { value: 'APPLIED', label: 'Applied', color: 'var(--status-applied)', bg: 'rgba(52, 168, 83, 0.08)' },
+                                                { value: 'UNDER_REVIEW', label: 'Under Review', color: 'var(--status-review)', bg: 'rgba(251, 188, 5, 0.08)' },
+                                                { value: 'SHORTLISTED', label: 'Shortlisted', color: 'var(--info-color)', bg: 'rgba(26, 115, 232, 0.08)' },
+                                                { value: 'INTERVIEW_SCHEDULED', label: 'Interview Scheduled', color: 'var(--status-interview)', bg: 'rgba(232, 115, 26, 0.08)' },
+                                                { value: 'INTERVIEWED', label: 'Interviewed', color: 'var(--primary-color)', bg: 'rgba(15, 110, 94, 0.08)' },
+                                                { value: 'OFFERED', label: 'Offered', color: 'var(--status-offered)', bg: 'rgba(15, 110, 94, 0.08)' },
+                                                { value: 'REJECTED', label: 'Rejected', color: 'var(--status-rejected)', bg: 'rgba(217, 48, 37, 0.08)' },
+                                                { value: 'WITHDRAWN', label: 'Withdrawn', color: 'var(--text-muted)', bg: 'rgba(128, 128, 128, 0.08)' }
+                                            ].map(opt => {
+                                                const STATUS_ORDER = {
+                                                    'APPLIED': 1,
+                                                    'UNDER_REVIEW': 2,
+                                                    'SHORTLISTED': 3,
+                                                    'INTERVIEW_SCHEDULED': 4,
+                                                    'INTERVIEWED': 5,
+                                                    'OFFERED': 6,
+                                                    'REJECTED': 7,
+                                                    'WITHDRAWN': 8
+                                                };
+                                                const currentStatusVal = updatingApp.status;
+                                                const isCurrentTerminal = currentStatusVal === 'REJECTED' || currentStatusVal === 'WITHDRAWN';
+                                                
+                                                const isSelected = newStatus === opt.value;
+                                                const isDisabled = (() => {
+                                                    if (isCurrentTerminal) return true;
+                                                    if (opt.value === currentStatusVal) return true;
+                                                    if (opt.value === 'WITHDRAWN') return true;
+                                                    if (opt.value === 'REJECTED') return false;
+                                                    const currentOrder = STATUS_ORDER[currentStatusVal] || 0;
+                                                    const targetOrder = STATUS_ORDER[opt.value] || 0;
+                                                    return targetOrder <= currentOrder;
+                                                })();
+
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        onClick={() => setNewStatus(opt.value)}
+                                                        disabled={isDisabled}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            padding: '0.6rem 0.75rem',
+                                                            borderRadius: '6px',
+                                                            border: isSelected ? `2px solid ${opt.color}` : '1px solid var(--border-color)',
+                                                            backgroundColor: isSelected ? opt.bg : 'var(--bg-card)',
+                                                            color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                            fontWeight: isSelected ? '700' : '400',
+                                                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                                            opacity: isDisabled ? 0.4 : 1,
+                                                            pointerEvents: isDisabled ? 'none' : 'auto',
+                                                            transition: 'all 0.15s ease',
+                                                            fontSize: '0.8rem',
+                                                            textAlign: 'left'
+                                                        }}
+                                                    >
+                                                        <span style={{ 
+                                                            width: '7px', 
+                                                            height: '7px', 
+                                                            borderRadius: '50%', 
+                                                            backgroundColor: opt.color, 
+                                                            marginRight: '8px',
+                                                            display: 'inline-block',
+                                                            boxShadow: isSelected ? `0 0 6px ${opt.color}` : 'none'
+                                                        }} />
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Transition Notes (Optional)</label>
+                                        <textarea 
+                                            className="form-control"
+                                            placeholder="Enter details or reason for this status change..."
+                                            rows="3"
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            style={{ fontSize: '0.85rem' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="card-footer" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setUpdatingApp(null)} disabled={isSavingStatus}>Cancel</button>
+                                    <button className="btn btn-primary btn-sm" onClick={handleUpdateStatus} disabled={isSavingStatus}>Save Changes</button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

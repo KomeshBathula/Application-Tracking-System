@@ -3,6 +3,7 @@ package com.ats.backend.service.impl;
 import com.ats.backend.dto.ApplicationDto;
 import com.ats.backend.dto.ApplicationStatusHistoryDto;
 import com.ats.backend.entity.*;
+import com.ats.backend.event.ApplicationPipelineEvent;
 import com.ats.backend.exception.ConflictException;
 import com.ats.backend.exception.InvalidRequestException;
 import com.ats.backend.exception.ResourceNotFoundException;
@@ -12,6 +13,7 @@ import com.ats.backend.repository.ApplicationStatusHistoryRepository;
 import com.ats.backend.repository.JobRepository;
 import com.ats.backend.repository.UserRepository;
 import com.ats.backend.service.ApplicationService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
 
@@ -30,20 +33,24 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final UserRepository userRepository;
     private final JobRepository jobRepository;
     private final ApplicationMapper applicationMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ApplicationServiceImpl(
             ApplicationRepository applicationRepository,
             ApplicationStatusHistoryRepository statusHistoryRepository,
             UserRepository userRepository,
             JobRepository jobRepository,
-            ApplicationMapper applicationMapper
+            ApplicationMapper applicationMapper,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.applicationRepository = applicationRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.userRepository = userRepository;
         this.jobRepository = jobRepository;
         this.applicationMapper = applicationMapper;
+        this.eventPublisher = eventPublisher;
     }
+
 
     @Override
     @Transactional
@@ -91,6 +98,8 @@ public class ApplicationServiceImpl implements ApplicationService {
 
                     statusHistoryRepository.saveAndFlush(history);
 
+                    eventPublisher.publishEvent(new ApplicationPipelineEvent(savedApplication, ApplicationStatus.WITHDRAWN, ApplicationStatus.APPLIED, candidate, "Application re-submitted after withdrawal.", ApplicationPipelineEvent.ActionType.SUBMITTED));
+
                     return applicationMapper.toDto(savedApplication);
                 } else {
                     throw new ConflictException("You have already applied to this job.");
@@ -117,6 +126,8 @@ public class ApplicationServiceImpl implements ApplicationService {
                     .build();
 
             statusHistoryRepository.saveAndFlush(history);
+
+            eventPublisher.publishEvent(new ApplicationPipelineEvent(savedApplication, null, ApplicationStatus.APPLIED, candidate, "Application submitted.", ApplicationPipelineEvent.ActionType.SUBMITTED));
 
             return applicationMapper.toDto(savedApplication);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -162,6 +173,8 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
 
         statusHistoryRepository.save(history);
+
+        eventPublisher.publishEvent(new ApplicationPipelineEvent(savedApplication, previousStatus, ApplicationStatus.WITHDRAWN, candidate, noteText, ApplicationPipelineEvent.ActionType.WITHDRAWN));
     }
 
     @Override
@@ -182,9 +195,13 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         ApplicationStatus previousStatus = application.getStatus();
 
-        // Validation: Prevent invalid status transitions
+        // Validation: Prevent invalid status transitions (one-way automata)
         if (previousStatus == ApplicationStatus.WITHDRAWN) {
             throw new InvalidRequestException("Cannot update the status of a withdrawn application.");
+        }
+
+        if (previousStatus == ApplicationStatus.REJECTED) {
+            throw new InvalidRequestException("Cannot update the status of a rejected application.");
         }
 
         if (newStatus == ApplicationStatus.WITHDRAWN) {
@@ -193,6 +210,11 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         if (previousStatus == newStatus) {
             throw new InvalidRequestException("Application status is already " + newStatus);
+        }
+
+        // One-way progression: New status must be REJECTED, or higher ordinal than previous status
+        if (newStatus != ApplicationStatus.REJECTED && newStatus.ordinal() <= previousStatus.ordinal()) {
+            throw new InvalidRequestException("Invalid status transition. Status can only progress forward (e.g. from " + previousStatus.name() + " to " + newStatus.name() + " is not allowed).");
         }
 
         // Update status
@@ -209,6 +231,8 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
 
         statusHistoryRepository.save(history);
+
+        eventPublisher.publishEvent(new ApplicationPipelineEvent(savedApplication, previousStatus, newStatus, user, note, ApplicationPipelineEvent.ActionType.STATUS_UPDATED));
 
         return applicationMapper.toDto(savedApplication);
     }

@@ -6,8 +6,8 @@ import com.ats.backend.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,9 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 @RestController
 @RequestMapping("/api")
 @Tag(name = "File Controller", description = "Endpoints for secure file serving")
@@ -28,14 +25,9 @@ import java.nio.file.Paths;
 public class FileController {
 
     private final UserRepository userRepository;
-    private final String uploadDir;
 
-    public FileController(
-            UserRepository userRepository,
-            @org.springframework.beans.factory.annotation.Value("${ats.upload.dir}") String uploadDir
-    ) {
+    public FileController(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.uploadDir = uploadDir;
     }
 
     @GetMapping("/resumes/{filename}")
@@ -45,13 +37,6 @@ public class FileController {
             Authentication authentication
     ) {
         try {
-            // Clean/normalize path to prevent Directory Traversal attacks
-            Path baseDir = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = baseDir.resolve(filename).normalize();
-            if (!filePath.startsWith(baseDir)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
             String[] parts = filename.split("_", 2);
             if (parts.length < 2) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -69,22 +54,26 @@ public class FileController {
                 }
             }
 
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                String contentType = "application/pdf";
-                if (filename.endsWith(".docx")) {
-                    contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-                } else if (filename.endsWith(".doc")) {
-                    contentType = "application/msword";
-                }
+            User fileOwner = userRepository.findById(fileOwnerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found: " + fileOwnerId));
+
+            if (fileOwner.getResumeData() != null && fileOwner.getResumeData().length > 0) {
+                String contentType = fileOwner.getResumeContentType() != null ? fileOwner.getResumeContentType() : "application/pdf";
+                String downloadFilename = fileOwner.getResumeFilename() != null ? fileOwner.getResumeFilename() : "resume.pdf";
+
+                org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("inline")
+                        .filename(downloadFilename)
+                        .build();
 
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
+                        .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                        .body(new ByteArrayResource(fileOwner.getResumeData()));
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
