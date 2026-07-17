@@ -555,7 +555,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     const [editingInterview, setEditingInterview] = React.useState(null);
 
     // Form inputs for scheduling/rescheduling
-    const [schedRound, setSchedRound] = React.useState('HR_SCREENING');
+    const [schedRound, setSchedRound] = React.useState('HR');
     const [schedMode, setSchedMode] = React.useState('ONLINE');
     const [schedScheduledAt, setSchedScheduledAt] = React.useState('');
     const [schedDuration, setSchedDuration] = React.useState(45);
@@ -692,7 +692,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
     const resetSchedForm = () => {
         setEditingInterview(null);
-        setSchedRound('HR_SCREENING');
+        setSchedRound('HR');
         setSchedMode('ONLINE');
         setSchedScheduledAt('');
         setSchedDuration(45);
@@ -1643,13 +1643,11 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                 onChange={(e) => setSchedRound(e.target.value)}
                                                 required
                                             >
-                                                <option value="HR_SCREENING">HR Screening</option>
-                                                <option value="TECHNICAL_ROUND_1">Technical Round 1</option>
-                                                <option value="TECHNICAL_ROUND_2">Technical Round 2</option>
-                                                <option value="SYSTEM_DESIGN">System Design</option>
-                                                <option value="MANAGERIAL">Managerial</option>
-                                                <option value="FITNESS_ROUND">Fitness Round</option>
-                                                <option value="BAR_RAISER">Bar Raiser</option>
+                                                <option value="HR">HR Round</option>
+                                                <option value="TECHNICAL">Technical Round</option>
+                                                <option value="MANAGERIAL">Managerial Round</option>
+                                                <option value="FINAL">Final Round</option>
+                                                <option value="CUSTOM">Custom Round</option>
                                             </select>
                                         </div>
                                         <div className="form-group" style={{ marginBottom: 0 }}>
