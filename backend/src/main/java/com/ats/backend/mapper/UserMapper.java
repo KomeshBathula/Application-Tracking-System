@@ -20,6 +20,8 @@ public class UserMapper {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .resumeUrl(user.getResumeUrl())
+                .companyId(user.getCompany() != null ? user.getCompany().getId() : null)
+                .companyName(user.getCompany() != null ? user.getCompany().getName() : null)
                 .build();
     }
 }

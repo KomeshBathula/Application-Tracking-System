@@ -20,4 +20,6 @@ public class UserDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String resumeUrl;
+    private Long companyId;
+    private String companyName;
 }

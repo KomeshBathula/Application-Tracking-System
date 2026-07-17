@@ -35,6 +35,83 @@ const Dashboard = () => {
     const [candidateCurrentPage, setCandidateCurrentPage] = useState(0);
     const [candidateError, setCandidateError] = useState(null);
 
+    // AI Settings State
+    const [aiConfig, setAiConfig] = useState({
+        aiProvider: 'OPENAI',
+        modelName: 'gpt-4o',
+        apiKey: '',
+        temperature: 0.2,
+        maxTokens: 2000,
+        enabled: false,
+        resumeAnalysisPrompt: ''
+    });
+    const [loadingAiConfig, setLoadingAiConfig] = useState(false);
+    const [savingAiConfig, setSavingAiConfig] = useState(false);
+    const [testingAiConfig, setTestingAiConfig] = useState(false);
+    const [aiError, setAiError] = useState(null);
+    const [aiSuccess, setAiSuccess] = useState(null);
+
+    const fetchAiConfig = async () => {
+        setLoadingAiConfig(true);
+        setAiError(null);
+        setAiSuccess(null);
+        try {
+            const res = await api.get('/company-admin/ai-config');
+            if (res.data && res.data.success) {
+                setAiConfig(res.data.data || {
+                    aiProvider: 'OPENAI',
+                    modelName: 'gpt-4o',
+                    apiKey: '',
+                    temperature: 0.2,
+                    maxTokens: 2000,
+                    enabled: false,
+                    resumeAnalysisPrompt: ''
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching AI config:', err);
+            setAiError(err.response?.data?.message || 'Failed to fetch AI configuration.');
+        } finally {
+            setLoadingAiConfig(false);
+        }
+    };
+
+    const handleSaveAiConfig = async (e) => {
+        e.preventDefault();
+        setSavingAiConfig(true);
+        setAiError(null);
+        setAiSuccess(null);
+        try {
+            const res = await api.post('/company-admin/ai-config', aiConfig);
+            if (res.data && res.data.success) {
+                setAiConfig(res.data.data);
+                setAiSuccess('AI configuration saved successfully!');
+            }
+        } catch (err) {
+            console.error('Error saving AI config:', err);
+            setAiError(err.response?.data?.message || 'Failed to save AI configuration.');
+        } finally {
+            setSavingAiConfig(false);
+        }
+    };
+
+    const handleTestAiConfig = async () => {
+        setTestingAiConfig(true);
+        setAiError(null);
+        setAiSuccess(null);
+        try {
+            const res = await api.post('/company-admin/ai-config/test');
+            if (res.data && res.data.success) {
+                setAiSuccess('AI configuration test connection successful!');
+            }
+        } catch (err) {
+            console.error('Error testing AI config:', err);
+            setAiError(err.response?.data?.message || 'AI configuration test connection failed.');
+        } finally {
+            setTestingAiConfig(false);
+        }
+    };
+
     const fetchStats = async () => {
         setLoadingStats(true);
         try {
@@ -124,6 +201,8 @@ const Dashboard = () => {
             fetchJobs({}, 0);
         } else if (activeTab === 'candidates') {
             fetchCandidates(0);
+        } else if (activeTab === 'ai-config') {
+            fetchAiConfig();
         }
     }, [activeTab]);
 
@@ -221,6 +300,16 @@ const Dashboard = () => {
                 </svg>
             )
         },
+        ...(user?.role === 'ROLE_COMPANY_ADMIN' || user?.role === 'ROLE_ADMIN' ? [{
+            id: 'ai-config',
+            label: 'AI Settings',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            )
+        }] : []),
         { 
             id: 'profile', 
             label: 'Profile', 
@@ -497,6 +586,137 @@ const Dashboard = () => {
                 </div>
             )}
 
+            {activeTab === 'ai-config' && (
+                <div className="card" style={{ maxWidth: '800px' }}>
+                    <div className="card-header">
+                        <h3 className="card-title">AI Resume Screening Settings</h3>
+                        <p className="card-subtitle">Configure AI model parameters, custom instruction templates, and access credentials for automated resume analysis.</p>
+                    </div>
+                    <div className="card-body" style={{ padding: '1.5rem' }}>
+                        {loadingAiConfig ? (
+                            <div className="skeleton" style={{ height: '300px' }}></div>
+                        ) : (
+                            <form onSubmit={handleSaveAiConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {aiError && (
+                                    <div className="alert alert-danger" style={{ margin: 0 }}>
+                                        {aiError}
+                                    </div>
+                                )}
+                                {aiSuccess && (
+                                    <div className="alert alert-success" style={{ margin: 0 }}>
+                                        {aiSuccess}
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                                    <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+                                        <label className="form-label" htmlFor="aiProvider" style={{ fontWeight: 600 }}>AI Provider</label>
+                                        <select
+                                            id="aiProvider"
+                                            className="form-control"
+                                            value={aiConfig.aiProvider || 'OPENAI'}
+                                            onChange={(e) => setAiConfig({ ...aiConfig, aiProvider: e.target.value })}
+                                            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                                        >
+                                            <option value="OPENAI">OpenAI</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+                                        <label className="form-label" htmlFor="modelName" style={{ fontWeight: 600 }}>Model Name</label>
+                                        <input
+                                            type="text"
+                                            id="modelName"
+                                            className="form-control"
+                                            value={aiConfig.modelName || ''}
+                                            onChange={(e) => setAiConfig({ ...aiConfig, modelName: e.target.value })}
+                                            placeholder="e.g. gpt-4o"
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" htmlFor="apiKey" style={{ fontWeight: 600 }}>API Access Key</label>
+                                    <input
+                                        type="password"
+                                        id="apiKey"
+                                        className="form-control"
+                                        value={aiConfig.apiKey || ''}
+                                        onChange={(e) => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
+                                        placeholder="Enter provider API key (masked after saving)"
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                                    <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+                                        <label className="form-label" htmlFor="temperature" style={{ fontWeight: 600 }}>Temperature ({aiConfig.temperature})</label>
+                                        <input
+                                            type="range"
+                                            id="temperature"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={aiConfig.temperature ?? 0.2}
+                                            onChange={(e) => setAiConfig({ ...aiConfig, temperature: parseFloat(e.target.value) })}
+                                            style={{ width: '100%', accentColor: 'var(--primary-color)', height: '38px' }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+                                        <label className="form-label" htmlFor="maxTokens" style={{ fontWeight: 600 }}>Max Response Tokens</label>
+                                        <input
+                                            type="number"
+                                            id="maxTokens"
+                                            className="form-control"
+                                            value={aiConfig.maxTokens ?? 2000}
+                                            onChange={(e) => setAiConfig({ ...aiConfig, maxTokens: parseInt(e.target.value) })}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" htmlFor="resumeAnalysisPrompt" style={{ fontWeight: 600 }}>System Instructions / Prompt Template</label>
+                                    <textarea
+                                        id="resumeAnalysisPrompt"
+                                        className="form-control"
+                                        rows="6"
+                                        value={aiConfig.resumeAnalysisPrompt || ''}
+                                        onChange={(e) => setAiConfig({ ...aiConfig, resumeAnalysisPrompt: e.target.value })}
+                                        placeholder="Enter instructions for resume grading..."
+                                        style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: 0 }}>
+                                    <input
+                                        type="checkbox"
+                                        id="enabled"
+                                        checked={aiConfig.enabled || false}
+                                        onChange={(e) => setAiConfig({ ...aiConfig, enabled: e.target.checked })}
+                                        style={{ width: '18px', height: '18px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="enabled" className="form-label" style={{ margin: 0, fontWeight: 600, cursor: 'pointer' }}>
+                                        Enable automated AI resume screening for candidate pipeline
+                                    </label>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                    <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.5rem 1rem' }} disabled={savingAiConfig}>
+                                        {savingAiConfig ? 'Saving...' : 'Save Configuration'}
+                                    </button>
+                                    <button type="button" className="btn btn-outline btn-sm" style={{ padding: '0.5rem 1rem' }} onClick={handleTestAiConfig} disabled={testingAiConfig}>
+                                        {testingAiConfig ? 'Testing Connection...' : 'Test Connection'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* View Details Modal Overlay */}
             {selectedJob && (
                 <ViewJobDetailsModal job={selectedJob} onClose={() => setSelectedJob(null)} />
@@ -512,6 +732,57 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     
     const [modalTab, setModalTab] = React.useState('details');
     
+    // AI Resume Screening States
+    const [screeningAppId, setScreeningAppId] = React.useState(null);
+    const [selectedScreeningReport, setSelectedScreeningReport] = React.useState(null);
+
+    const handleRunAiScreen = async (appId) => {
+        setScreeningAppId(appId);
+        try {
+            const res = await api.post(`/screening/${appId}`);
+            if (res.data && res.data.success) {
+                showSubNotification('AI Screening completed successfully!', 'success');
+                fetchApplicants(appCurrentPage, search, statusFilter);
+            } else {
+                showSubNotification(res.data.message || 'AI Screening failed.', 'error');
+            }
+        } catch (err) {
+            console.error('Error running AI screen:', err);
+            showSubNotification(err.response?.data?.message || 'AI Screening execution failed.', 'error');
+        } finally {
+            setScreeningAppId(null);
+        }
+    };
+
+    const handleViewAiReport = async (appId) => {
+        try {
+            const res = await api.get(`/screening/${appId}`);
+            if (res.data && res.data.success) {
+                setSelectedScreeningReport(res.data.data);
+            } else {
+                showSubNotification(res.data.message || 'Failed to fetch AI report.', 'error');
+            }
+        } catch (err) {
+            console.error('Error fetching AI report:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to retrieve AI report details.', 'error');
+        }
+    };
+
+    const getRecommendationBadgeStyle = (rec) => {
+        switch (rec) {
+            case 'HIGHLY_RECOMMENDED':
+                return { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' };
+            case 'RECOMMENDED':
+                return { backgroundColor: 'rgba(79, 70, 229, 0.15)', color: '#4f46e5', border: '1px solid rgba(79, 70, 229, 0.3)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' };
+            case 'NEEDS_MANUAL_REVIEW':
+                return { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' };
+            case 'LOW_MATCH':
+                return { backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' };
+            default:
+                return { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' };
+        }
+    };
+
     // Applicants states
     const [applicants, setApplicants] = React.useState([]);
     const [loadingApplicants, setLoadingApplicants] = React.useState(false);
@@ -555,7 +826,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     const [editingInterview, setEditingInterview] = React.useState(null);
 
     // Form inputs for scheduling/rescheduling
-    const [schedRound, setSchedRound] = React.useState('HR_SCREENING');
+    const [schedRound, setSchedRound] = React.useState('HR');
     const [schedMode, setSchedMode] = React.useState('ONLINE');
     const [schedScheduledAt, setSchedScheduledAt] = React.useState('');
     const [schedDuration, setSchedDuration] = React.useState(45);
@@ -692,7 +963,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
     const resetSchedForm = () => {
         setEditingInterview(null);
-        setSchedRound('HR_SCREENING');
+        setSchedRound('HR');
         setSchedMode('ONLINE');
         setSchedScheduledAt('');
         setSchedDuration(45);
@@ -706,12 +977,12 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
         setEditingInterview(item);
         setSchedRound(item.interviewRound);
         setSchedMode(item.interviewMode);
-        if (item.scheduledAt) {
-            setSchedScheduledAt(item.scheduledAt.substring(0, 16));
+        if (item.scheduledDateTime) {
+            setSchedScheduledAt(item.scheduledDateTime.substring(0, 16));
         } else {
             setSchedScheduledAt('');
         }
-        setSchedDuration(item.durationMinutes);
+        setSchedDuration(item.duration);
         setSchedInterviewerId(item.interviewerId || '');
         setSchedMeetingLink(item.meetingLink || '');
         setSchedLocation(item.location || '');
@@ -737,16 +1008,21 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
         }
 
         const payload = {
-            applicationId: selectedApp.id,
             interviewRound: schedRound,
             interviewMode: schedMode,
-            scheduledAt: formattedScheduledAt,
-            durationMinutes: parseInt(schedDuration),
+            scheduledDateTime: formattedScheduledAt,
+            duration: parseInt(schedDuration),
             interviewerId: parseInt(schedInterviewerId),
             meetingLink: schedMode === 'ONLINE' ? schedMeetingLink : null,
             location: schedMode !== 'ONLINE' ? schedLocation : null,
             notes: schedNotes
         };
+
+        if (editingInterview) {
+            payload.status = editingInterview.status;
+        } else {
+            payload.applicationId = selectedApp.id;
+        }
 
         try {
             let res;
@@ -1165,6 +1441,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                 <th>Resume</th>
                                                 <th>Applied Date</th>
                                                 <th>Status</th>
+                                                <th>AI Match</th>
                                                 <th style={{ textAlign: 'right' }}>Actions</th>
                                             </tr>
                                         </thead>
@@ -1206,6 +1483,33 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                         <span className="badge" style={getStatusBadge(app.status)}>
                                                             {app.status.replace('_', ' ')}
                                                         </span>
+                                                    </td>
+                                                    <td>
+                                                        {screeningAppId === app.id ? (
+                                                            <span style={{ color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 600 }}>Screening...</span>
+                                                        ) : app.aiOverallScore !== null && app.aiOverallScore !== undefined ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                <span 
+                                                                    className="badge" 
+                                                                    style={getRecommendationBadgeStyle(app.aiRecommendation)}
+                                                                    onClick={() => handleViewAiReport(app.id)}
+                                                                    title="Click to view AI report"
+                                                                >
+                                                                    {app.aiRecommendation.replace(/_/g, ' ')}
+                                                                </span>
+                                                                <strong style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{app.aiOverallScore}%</strong>
+                                                            </div>
+                                                        ) : app.resumeUrl ? (
+                                                            <button 
+                                                                className="btn btn-outline btn-sm"
+                                                                style={{ padding: '0.15rem 0.4rem', height: '24px', fontSize: '0.7rem', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
+                                                                onClick={() => handleRunAiScreen(app.id)}
+                                                            >
+                                                                ⚡ Screen
+                                                            </button>
+                                                        ) : (
+                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>No Resume</span>
+                                                        )}
                                                     </td>
                                                     <td style={{ textAlign: 'right' }}>
                                                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
@@ -1590,10 +1894,10 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                                 </span>
                                                             </div>
                                                             <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                                                                Interviewer: {item.interviewerName} ({item.interviewerEmail})
+                                                                Interviewer: {item.interviewerFullName} ({item.interviewerEmail})
                                                             </p>
                                                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                                                                📅 {new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)
+                                                                📅 {new Date(item.scheduledDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.duration} mins)
                                                             </p>
                                                             {item.interviewMode === 'ONLINE' && item.meetingLink && (
                                                                 <p style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>
@@ -1643,13 +1947,11 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                 onChange={(e) => setSchedRound(e.target.value)}
                                                 required
                                             >
-                                                <option value="HR_SCREENING">HR Screening</option>
-                                                <option value="TECHNICAL_ROUND_1">Technical Round 1</option>
-                                                <option value="TECHNICAL_ROUND_2">Technical Round 2</option>
-                                                <option value="SYSTEM_DESIGN">System Design</option>
-                                                <option value="MANAGERIAL">Managerial</option>
-                                                <option value="FITNESS_ROUND">Fitness Round</option>
-                                                <option value="BAR_RAISER">Bar Raiser</option>
+                                                <option value="HR">HR Round</option>
+                                                <option value="TECHNICAL">Technical Round</option>
+                                                <option value="MANAGERIAL">Managerial Round</option>
+                                                <option value="FINAL">Final Round</option>
+                                                <option value="CUSTOM">Custom Round</option>
                                             </select>
                                         </div>
                                         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1976,8 +2278,207 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                     </div>
                 </div>
             )}
+
+            {selectedScreeningReport && (
+                <ViewScreeningReportModal report={selectedScreeningReport} onClose={() => setSelectedScreeningReport(null)} />
+            )}
         </div>
     );
 };
 
 export default Dashboard;
+
+const ViewScreeningReportModal = ({ report, onClose }) => {
+    const dialogRef = React.useRef(null);
+
+    const getScoreColor = (score) => {
+        if (score >= 80) return 'var(--success-color)';
+        if (score >= 60) return 'var(--primary-color)';
+        if (score >= 40) return 'var(--warning-color)';
+        return 'var(--danger-color)';
+    };
+
+    const getRecommendationLabel = (rec) => {
+        switch (rec) {
+            case 'HIGHLY_RECOMMENDED': return 'Highly Recommended';
+            case 'RECOMMENDED': return 'Recommended';
+            case 'NEEDS_MANUAL_REVIEW': return 'Needs Manual Review';
+            case 'LOW_MATCH': return 'Low Match';
+            default: return rec;
+        }
+    };
+
+    return (
+        <div 
+            className="modal-backdrop" 
+            style={{ zIndex: 1200 }} 
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div 
+                ref={dialogRef}
+                className="modal-content" 
+                role="dialog"
+                aria-modal="true"
+                style={{ borderTop: '4px solid var(--primary-color)', maxWidth: '850px', width: '90%' }}
+            >
+                <div className="card-header" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h3 className="card-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                            <span>⚡ AI Screening Analysis</span>
+                            <span className="badge" style={{
+                                backgroundColor: report.recommendation === 'HIGHLY_RECOMMENDED' ? 'rgba(16, 185, 129, 0.15)' :
+                                               report.recommendation === 'RECOMMENDED' ? 'rgba(79, 70, 229, 0.15)' :
+                                               report.recommendation === 'NEEDS_MANUAL_REVIEW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: report.recommendation === 'HIGHLY_RECOMMENDED' ? '#10b981' :
+                                       report.recommendation === 'RECOMMENDED' ? '#4f46e5' :
+                                       report.recommendation === 'NEEDS_MANUAL_REVIEW' ? '#f59e0b' : '#ef4444',
+                                border: '1px solid currentColor',
+                                fontSize: '0.75rem',
+                                padding: '0.2rem 0.5rem'
+                            }}>
+                                {getRecommendationLabel(report.recommendation)}
+                            </span>
+                        </h3>
+                        <p className="card-subtitle" style={{ fontSize: '0.85rem', margin: '0.25rem 0 0 0' }}>
+                            Candidate: <strong>{report.candidateName}</strong> for <strong>{report.jobTitle}</strong>
+                        </p>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '28px', height: '28px' }} onClick={onClose}>✕</button>
+                </div>
+
+                <div className="card-body" style={{ padding: '1.5rem', maxHeight: '70vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Scores Section */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                        <div className="card" style={{ padding: '1rem', textAlign: 'center', border: '1.5px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: 800, color: getScoreColor(report.overallScore) }}>
+                                {report.overallScore}%
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase' }}>Overall Match</div>
+                        </div>
+
+                        <div className="card" style={{ padding: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getScoreColor(report.experienceScore) }}>
+                                {report.experienceScore}%
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase' }}>Experience</div>
+                        </div>
+
+                        <div className="card" style={{ padding: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getScoreColor(report.educationScore) }}>
+                                {report.educationScore}%
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase' }}>Education</div>
+                        </div>
+
+                        <div className="card" style={{ padding: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getScoreColor(report.projectsScore) }}>
+                                {report.projectsScore}%
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase' }}>Projects</div>
+                        </div>
+
+                        <div className="card" style={{ padding: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getScoreColor(report.certificationsScore) }}>
+                                {report.certificationsScore}%
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase' }}>Certifications</div>
+                        </div>
+                    </div>
+
+                    {/* Skills Breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                        <div className="card" style={{ border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                            <div className="card-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span>✔</span> Matched Skills
+                                </h4>
+                            </div>
+                            <div className="card-body" style={{ padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                {report.matchedSkills && report.matchedSkills.length > 0 ? (
+                                    report.matchedSkills.map((skill, idx) => (
+                                        <span key={idx} className="badge badge-success" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>{skill}</span>
+                                    ))
+                                ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None identified</span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                            <div className="card-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span>✖</span> Missing / Gap Skills
+                                </h4>
+                            </div>
+                            <div className="card-body" style={{ padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                {report.missingSkills && report.missingSkills.length > 0 ? (
+                                    report.missingSkills.map((skill, idx) => (
+                                        <span key={idx} className="badge badge-danger" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>{skill}</span>
+                                    ))
+                                ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None identified</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Detailed Analysis (Strengths & Weaknesses) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                        <div className="card" style={{ border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                            <div className="card-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--success-color)' }}>Candidate Strengths</h4>
+                            </div>
+                            <div className="card-body" style={{ padding: '1rem' }}>
+                                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {report.strengths && report.strengths.length > 0 ? (
+                                        report.strengths.map((str, idx) => <li key={idx}>{str}</li>)
+                                    ) : (
+                                        <li>No specific strengths highlighted</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                            <div className="card-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--warning-color)' }}>Areas for Improvement</h4>
+                            </div>
+                            <div className="card-body" style={{ padding: '1rem' }}>
+                                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {report.weaknesses && report.weaknesses.length > 0 ? (
+                                        report.weaknesses.map((weak, idx) => <li key={idx}>{weak}</li>)
+                                    ) : (
+                                        <li>No major gaps highlighted</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Metadata Footer info */}
+                    <div style={{ 
+                        borderTop: '1px solid var(--border-color)', 
+                        paddingTop: '0.75rem', 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        fontSize: '0.75rem', 
+                        color: 'var(--text-muted)',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem'
+                    }}>
+                        <span>Model: <strong>{report.modelName || 'Unknown'}</strong></span>
+                        <span>Tokens: <strong>{report.totalTokens || 0}</strong> (Prompt: {report.promptTokens || 0}, Completion: {report.completionTokens || 0})</span>
+                        <span>Estimated Cost: <strong>${(report.costEstimation || 0).toFixed(4)}</strong></span>
+                        <span>Screened: <strong>{new Date(report.screenedAt).toLocaleString()}</strong></span>
+                    </div>
+
+                </div>
+
+                <div className="card-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={onClose}>Close Report</button>
+                </div>
+            </div>
+        </div>
+    );
+};

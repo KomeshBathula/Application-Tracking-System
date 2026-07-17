@@ -522,7 +522,7 @@ const Dashboard = () => {
                                                         <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: '600' }}>{item.jobTitle}</h4>
                                                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{item.company}</p>
                                                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                                            📅 {new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)
+                                                            📅 {new Date(item.scheduledDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.duration} mins)
                                                         </p>
                                                     </div>
                                                     <div>
@@ -780,7 +780,7 @@ const Dashboard = () => {
                                                         {item.interviewRound.replace('_', ' ')}
                                                     </span>
                                                 </td>
-                                                <td>{new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)</td>
+                                                <td>{new Date(item.scheduledDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.duration} mins)</td>
                                                 <td>
                                                     <span className="badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-primary)', fontSize: '0.7rem' }}>
                                                         {item.interviewMode}

@@ -10,13 +10,15 @@ const Register = () => {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState('COMPANY_ADMIN');
+    const [companyName, setCompanyName] = useState('');
     const [validationError, setValidationError] = useState('');
     const [apiError, setApiError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        document.title = "Recruiter Registration - ATS";
+        document.title = "Company Registration - ATS";
         if (user) {
             navigate('/recruiter/dashboard');
         }
@@ -40,6 +42,10 @@ const Register = () => {
             setValidationError('Please enter a valid email address.');
             return false;
         }
+        if (!companyName.trim()) {
+            setValidationError('Company Name is required.');
+            return false;
+        }
         if (!password) {
             setValidationError('Password is required.');
             return false;
@@ -60,14 +66,15 @@ const Register = () => {
         if (!validateForm()) return;
 
         setLoading(true);
-        const result = await register(fullName, email, password, 'RECRUITER');
+        const result = await register(fullName, email, password, role, companyName);
         setLoading(false);
 
         if (result.success) {
-            setSuccessMessage('Recruiter registration successful! You can now log in.');
+            setSuccessMessage('Registration successful! You can now log in.');
             setFullName('');
             setEmail('');
             setPassword('');
+            setCompanyName('');
         } else {
             setApiError(result.message);
         }
@@ -149,6 +156,32 @@ const Register = () => {
                                         placeholder="Enter your name"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="role">I am a</label>
+                                    <select
+                                        id="role"
+                                        className="form-control"
+                                        value={role}
+                                        onChange={(e) => setRole(e.target.value)}
+                                        style={{ width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    >
+                                        <option value="COMPANY_ADMIN">Company Administrator</option>
+                                        <option value="RECRUITER">Recruiter</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="companyName">Company Name</label>
+                                    <input
+                                        type="text"
+                                        id="companyName"
+                                        className="form-control"
+                                        placeholder="e.g. Acme Corporation"
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
                                     />
                                 </div>
 

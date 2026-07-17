@@ -4,12 +4,14 @@ import com.ats.backend.dto.AuthResponse;
 import com.ats.backend.dto.LoginRequest;
 import com.ats.backend.dto.RegisterRequest;
 import com.ats.backend.dto.UserDto;
+import com.ats.backend.entity.Company;
 import com.ats.backend.entity.Role;
 import com.ats.backend.entity.RoleName;
 import com.ats.backend.entity.User;
 import com.ats.backend.exception.EmailAlreadyExistsException;
 import com.ats.backend.exception.ResourceNotFoundException;
 import com.ats.backend.mapper.UserMapper;
+import com.ats.backend.repository.CompanyRepository;
 import com.ats.backend.repository.RoleRepository;
 import com.ats.backend.repository.UserRepository;
 import com.ats.backend.security.JwtTokenProvider;
@@ -27,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
@@ -35,12 +38,14 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
+            CompanyRepository companyRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtTokenProvider tokenProvider,
             UserMapper userMapper) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.companyRepository = companyRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
@@ -58,17 +63,27 @@ public class AuthServiceImpl implements AuthService {
         try {
             roleNameEnum = RoleName.valueOf("ROLE_" + registerRequest.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid role specified. Allowed values are ADMIN, RECRUITER, CANDIDATE");
+            throw new ResourceNotFoundException("Invalid role specified. Allowed values are ADMIN, COMPANY_ADMIN, RECRUITER, CANDIDATE");
         }
 
         Role role = roleRepository.findByRoleName(roleNameEnum)
                 .orElseThrow(() -> new ResourceNotFoundException("Role " + roleNameEnum + " was not initialized in the database."));
+
+        Company company = null;
+        if (registerRequest.getCompanyId() != null) {
+            company = companyRepository.findById(registerRequest.getCompanyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + registerRequest.getCompanyId()));
+        } else if (registerRequest.getCompanyName() != null && !registerRequest.getCompanyName().trim().isEmpty()) {
+            company = companyRepository.findByName(registerRequest.getCompanyName())
+                    .orElseGet(() -> companyRepository.save(Company.builder().name(registerRequest.getCompanyName().trim()).build()));
+        }
 
         User user = User.builder()
                 .fullName(registerRequest.getFullName())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role(role)
+                .company(company)
                 .enabled(true)
                 .build();
 

@@ -28,4 +28,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "Role is required")
     private String role; // "ADMIN", "RECRUITER", or "CANDIDATE"
+
+    private Long companyId;
+    private String companyName;
 }

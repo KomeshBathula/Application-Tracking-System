@@ -85,7 +85,17 @@ public class JobController {
             statusFilter = "OPEN";
         }
 
-        Page<JobDto> jobs = jobService.getAllJobs(title, company, location, employmentType, statusFilter, page, size, sortBy, sortDir);
+        Long companyId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof com.ats.backend.security.CustomUserDetails) {
+            com.ats.backend.entity.User user = ((com.ats.backend.security.CustomUserDetails) authentication.getPrincipal()).getUser();
+            boolean isTenantUser = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_RECRUITER") || a.getAuthority().equals("ROLE_COMPANY_ADMIN"));
+            if (isTenantUser && user.getCompany() != null) {
+                companyId = user.getCompany().getId();
+            }
+        }
+
+        Page<JobDto> jobs = jobService.getAllJobs(title, company, location, employmentType, statusFilter, companyId, page, size, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Jobs list retrieved successfully", jobs));
     }
 

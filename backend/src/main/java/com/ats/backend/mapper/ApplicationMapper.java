@@ -9,10 +9,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class ApplicationMapper {
 
+    private final com.ats.backend.repository.AiScreeningResultRepository aiScreeningResultRepository;
+
+    public ApplicationMapper(com.ats.backend.repository.AiScreeningResultRepository aiScreeningResultRepository) {
+        this.aiScreeningResultRepository = aiScreeningResultRepository;
+    }
+
     public ApplicationDto toDto(Application application) {
         if (application == null) {
             return null;
         }
+
+        java.util.Optional<com.ats.backend.entity.AiScreeningResult> screeningResultOpt = 
+                aiScreeningResultRepository.findByApplicationId(application.getId());
+
         return ApplicationDto.builder()
                 .id(application.getId())
                 .jobId(application.getJob().getId())
@@ -26,6 +36,8 @@ public class ApplicationMapper {
                 .status(application.getStatus())
                 .createdAt(application.getCreatedAt())
                 .updatedAt(application.getUpdatedAt())
+                .aiRecommendation(screeningResultOpt.map(r -> r.getRecommendation().name()).orElse(null))
+                .aiOverallScore(screeningResultOpt.map(com.ats.backend.entity.AiScreeningResult::getOverallScore).orElse(null))
                 .build();
     }
 

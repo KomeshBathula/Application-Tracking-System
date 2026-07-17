@@ -23,4 +23,6 @@ public class ApplicationDto {
     private ApplicationStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String aiRecommendation;
+    private Integer aiOverallScore;
 }

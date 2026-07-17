@@ -48,13 +48,15 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (fullName, email, password, role) => {
+    const register = async (fullName, email, password, role, companyName = null, companyId = null) => {
         try {
             const response = await api.post('/auth/register', {
                 fullName,
                 email,
                 password,
-                role
+                role,
+                companyName,
+                companyId
             });
             if (response.data && response.data.success) {
                 return { success: true };

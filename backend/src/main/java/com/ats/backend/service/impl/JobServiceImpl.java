@@ -46,7 +46,7 @@ public class JobServiceImpl implements JobService {
 
         Job job = Job.builder()
                 .title(jobDto.getTitle())
-                .company(jobDto.getCompany())
+                .company(recruiter.getCompany() != null ? recruiter.getCompany().getName() : jobDto.getCompany())
                 .location(jobDto.getLocation())
                 .description(jobDto.getDescription())
                 .employmentType(jobDto.getEmploymentType())
@@ -54,6 +54,7 @@ public class JobServiceImpl implements JobService {
                 .salaryRange(jobDto.getSalaryRange())
                 .status(jobDto.getStatus())
                 .recruiter(recruiter)
+                .companyEntity(recruiter.getCompany())
                 .build();
 
         Job savedJob = jobRepository.save(job);
@@ -117,7 +118,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<JobDto> getAllJobs(String title, String company, String location, String employmentType, String status, int page, int size, String sortBy, String sortDir) {
+    public Page<JobDto> getAllJobs(String title, String company, String location, String employmentType, String status, Long companyId, int page, int size, String sortBy, String sortDir) {
         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
         
         // Map frontend sorting property names if necessary
@@ -143,6 +144,7 @@ public class JobServiceImpl implements JobService {
                 (location == null || location.trim().isEmpty()) ? null : location,
                 (employmentType == null || employmentType.trim().isEmpty()) ? null : employmentType,
                 jobStatusEnum,
+                companyId,
                 pageable
         );
 
