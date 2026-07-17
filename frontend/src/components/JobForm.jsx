@@ -70,7 +70,7 @@ const JobForm = ({ initialData, onSubmit, onCancel, titleText }) => {
                             <input 
                                 type="text" 
                                 className="form-control" 
-                                placeholder="e.g. Stripe, Inc." 
+                                placeholder="e.g. Tata Consultancy Services" 
                                 value={company} 
                                 onChange={(e) => setCompany(e.target.value)} 
                             />
@@ -81,7 +81,7 @@ const JobForm = ({ initialData, onSubmit, onCancel, titleText }) => {
                             <input 
                                 type="text" 
                                 className="form-control" 
-                                placeholder="e.g. San Francisco, CA (Hybrid)" 
+                                placeholder="e.g. Bengaluru, Karnataka (Hybrid)" 
                                 value={location} 
                                 onChange={(e) => setLocation(e.target.value)} 
                             />
@@ -117,7 +117,7 @@ const JobForm = ({ initialData, onSubmit, onCancel, titleText }) => {
                             <input 
                                 type="text" 
                                 className="form-control" 
-                                placeholder="e.g. $140k - $180k" 
+                                placeholder="e.g. ₹12 LPA - ₹18 LPA" 
                                 value={salaryRange} 
                                 onChange={(e) => setSalaryRange(e.target.value)} 
                             />

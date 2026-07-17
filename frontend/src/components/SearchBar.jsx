@@ -41,7 +41,7 @@ const SearchBar = ({ onSearch, showStatusFilter = false }) => {
                         <input 
                             type="text" 
                             className="form-control" 
-                            placeholder="e.g. Stripe, Linear..." 
+                            placeholder="e.g. TCS, Swiggy, Wipro..." 
                             value={company} 
                             onChange={(e) => setCompany(e.target.value)} 
                         />
@@ -52,7 +52,7 @@ const SearchBar = ({ onSearch, showStatusFilter = false }) => {
                         <input 
                             type="text" 
                             className="form-control" 
-                            placeholder="e.g. Remote, SF..." 
+                            placeholder="e.g. Bengaluru, Remote, Mumbai..." 
                             value={location} 
                             onChange={(e) => setLocation(e.target.value)} 
                         />
