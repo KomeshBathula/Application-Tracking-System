@@ -41,6 +41,23 @@ const Dashboard = () => {
     const [timelineHistory, setTimelineHistory] = useState([]);
     const [loadingTimeline, setLoadingTimeline] = useState(false);
 
+    // Interview state
+    const [interviews, setInterviews] = useState([]);
+    const [loadingInterviews, setLoadingInterviews] = useState(false);
+
+    const getInterviewStatusBadge = (status) => {
+        switch (status) {
+            case 'SCHEDULED':
+                return { backgroundColor: 'var(--warning-light)', color: 'var(--warning-color)' };
+            case 'COMPLETED':
+                return { backgroundColor: 'var(--success-light)', color: 'var(--success-color)' };
+            case 'CANCELLED':
+                return { backgroundColor: 'var(--danger-light)', color: 'var(--danger-color)' };
+            default:
+                return { backgroundColor: 'var(--text-muted)', color: '#ffffff' };
+        }
+    };
+
     // Alerts state (custom toasts)
     const [alertText, setAlertText] = useState(null);
     const [alertType, setAlertType] = useState('success');
@@ -203,6 +220,20 @@ const Dashboard = () => {
         }
     };
 
+    const fetchInterviews = async () => {
+        setLoadingInterviews(true);
+        try {
+            const res = await api.get('/interviews/candidate');
+            if (res.data && res.data.success) {
+                setInterviews(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching candidate interviews:', err);
+        } finally {
+            setLoadingInterviews(false);
+        }
+    };
+
     const loadAppliedIds = async () => {
         try {
             let allAppliedJobs = [];
@@ -240,12 +271,15 @@ const Dashboard = () => {
         fetchRecentlyPosted();
         fetchJobs({}, 0);
         loadAppliedIds();
+        fetchInterviews();
     }, []);
 
-    // Fetch applications when applications tab selected or current page/filters change
+    // Fetch applications or interviews when tab changes
     useEffect(() => {
         if (activeTab === 'applications') {
             fetchMyApplications(0, appSearch, appStatus);
+        } else if (activeTab === 'interviews') {
+            fetchInterviews();
         }
     }, [activeTab]);
 
@@ -384,6 +418,16 @@ const Dashboard = () => {
             )
         },
         { 
+            id: 'interviews', 
+            label: 'Interviews', 
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            )
+        },
+        { 
             id: 'profile', 
             label: 'Profile', 
             icon: (
@@ -459,6 +503,43 @@ const Dashboard = () => {
                                     )}
                                 </div>
                             </div>
+                            
+                            {interviews.filter(i => i.status === 'SCHEDULED').length > 0 && (
+                                <div className="card" style={{ borderLeft: '4px solid var(--warning-color)' }}>
+                                    <div className="card-header">
+                                        <h3 className="card-title">Upcoming Interviews</h3>
+                                    </div>
+                                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        {interviews
+                                            .filter(i => i.status === 'SCHEDULED')
+                                            .slice(0, 3)
+                                            .map(item => (
+                                                <div key={item.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-secondary)' }}>
+                                                    <div>
+                                                        <span className="badge badge-warning" style={{ fontSize: '0.65rem', marginBottom: '0.25rem' }}>
+                                                            {item.interviewRound.replace('_', ' ')}
+                                                        </span>
+                                                        <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: '600' }}>{item.jobTitle}</h4>
+                                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{item.company}</p>
+                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                                            📅 {new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        {item.interviewMode === 'ONLINE' && item.meetingLink ? (
+                                                            <a href={item.meetingLink} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">Join</a>
+                                                        ) : (
+                                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                {item.interviewMode}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -647,6 +728,85 @@ const Dashboard = () => {
                                         />
                                     </div>
                                 )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'interviews' && (
+                <div className="card">
+                    <div className="card-header">
+                        <h3 className="card-title">My Interviews</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.15rem' }}>Track your upcoming and past interview stages.</p>
+                    </div>
+                    <div className="card-body" style={{ padding: 0 }}>
+                        {loadingInterviews ? (
+                            <div style={{ padding: '2rem' }}>
+                                <div className="skeleton" style={{ height: '32px', marginBottom: '1rem' }}></div>
+                                <div className="skeleton" style={{ height: '32px', marginBottom: '1rem' }}></div>
+                                <div className="skeleton" style={{ height: '32px' }}></div>
+                            </div>
+                        ) : interviews.length === 0 ? (
+                            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <p style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>No interviews scheduled</p>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>You will see scheduled interviews once recruiters update your stage.</p>
+                            </div>
+                        ) : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Job Title</th>
+                                            <th>Company</th>
+                                            <th>Round</th>
+                                            <th>Date & Time</th>
+                                            <th>Mode</th>
+                                            <th>Details</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {interviews.map(item => (
+                                            <tr key={item.id}>
+                                                <td style={{ fontWeight: '600' }}>{item.jobTitle}</td>
+                                                <td>{item.company}</td>
+                                                <td>
+                                                    <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
+                                                        {item.interviewRound.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                                <td>{new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)</td>
+                                                <td>
+                                                    <span className="badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-primary)', fontSize: '0.7rem' }}>
+                                                        {item.interviewMode}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {item.interviewMode === 'ONLINE' && item.meetingLink && (
+                                                        <a href={item.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>Join Meeting</a>
+                                                    )}
+                                                    {item.interviewMode === 'OFFLINE' && item.location && (
+                                                        <span>📍 {item.location}</span>
+                                                    )}
+                                                    {item.interviewMode === 'PHONE' && item.location && (
+                                                        <span>📞 {item.location}</span>
+                                                    )}
+                                                    {item.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{item.notes}</div>}
+                                                </td>
+                                                <td>
+                                                    <span className="badge" style={getInterviewStatusBadge(item.status)}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>

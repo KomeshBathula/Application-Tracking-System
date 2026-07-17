@@ -544,6 +544,259 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
         }, 5000);
     };
 
+    // Selected Application for detail management modal
+    const [selectedApp, setSelectedApp] = React.useState(null);
+    const [appTab, setAppTab] = React.useState('pipeline'); // 'pipeline', 'schedule', 'notes', 'history'
+
+    // Interviews states
+    const [appInterviews, setAppInterviews] = React.useState([]);
+    const [loadingAppInterviews, setLoadingAppInterviews] = React.useState(false);
+    const [interviewers, setInterviewers] = React.useState([]);
+    const [editingInterview, setEditingInterview] = React.useState(null);
+
+    // Form inputs for scheduling/rescheduling
+    const [schedRound, setSchedRound] = React.useState('HR_SCREENING');
+    const [schedMode, setSchedMode] = React.useState('ONLINE');
+    const [schedScheduledAt, setSchedScheduledAt] = React.useState('');
+    const [schedDuration, setSchedDuration] = React.useState(45);
+    const [schedInterviewerId, setSchedInterviewerId] = React.useState('');
+    const [schedMeetingLink, setSchedMeetingLink] = React.useState('');
+    const [schedLocation, setSchedLocation] = React.useState('');
+    const [schedNotes, setSchedNotes] = React.useState('');
+    const [isSavingInterview, setIsSavingInterview] = React.useState(false);
+    const [cancelNote, setCancelNote] = React.useState('');
+    const [cancellingInterviewId, setCancellingInterviewId] = React.useState(null);
+
+    // Recruiter Notes states
+    const [notesList, setNotesList] = React.useState([]);
+    const [loadingNotes, setLoadingNotes] = React.useState(false);
+    const [newNoteContent, setNewNoteContent] = React.useState('');
+    const [savingNote, setSavingNote] = React.useState(false);
+    const [editingNoteId, setEditingNoteId] = React.useState(null);
+    const [editingNoteContent, setEditingNoteContent] = React.useState('');
+
+    const fetchAppNotes = async (appId) => {
+        setLoadingNotes(true);
+        try {
+            const res = await api.get(`/notes/application/${appId}`);
+            if (res.data && res.data.success) {
+                setNotesList(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching app notes:', err);
+        } finally {
+            setLoadingNotes(false);
+        }
+    };
+
+    const handleCreateNote = async (e) => {
+        e.preventDefault();
+        if (!newNoteContent.trim()) return;
+        setSavingNote(true);
+        try {
+            const res = await api.post('/notes', {
+                applicationId: selectedApp.id,
+                content: newNoteContent
+            });
+            if (res.data && res.data.success) {
+                setNewNoteContent('');
+                fetchAppNotes(selectedApp.id);
+                showSubNotification('Note added successfully!', 'success');
+            } else {
+                showSubNotification(res.data.message || 'Failed to add note.', 'error');
+            }
+        } catch (err) {
+            console.error('Error creating note:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to add note.', 'error');
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
+    const handleUpdateNote = async (noteId) => {
+        if (!editingNoteContent.trim()) return;
+        setSavingNote(true);
+        try {
+            const res = await api.put(`/notes/${noteId}`, {
+                content: editingNoteContent
+            });
+            if (res.data && res.data.success) {
+                setEditingNoteId(null);
+                setEditingNoteContent('');
+                fetchAppNotes(selectedApp.id);
+                showSubNotification('Note updated successfully!', 'success');
+            } else {
+                showSubNotification(res.data.message || 'Failed to update note.', 'error');
+            }
+        } catch (err) {
+            console.error('Error updating note:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to update note.', 'error');
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (noteId) => {
+        if (!window.confirm('Are you sure you want to delete this note?')) return;
+        try {
+            const res = await api.delete(`/notes/${noteId}`);
+            if (res.data && res.data.success) {
+                fetchAppNotes(selectedApp.id);
+                showSubNotification('Note deleted successfully!', 'success');
+            } else {
+                showSubNotification(res.data.message || 'Failed to delete note.', 'error');
+            }
+        } catch (err) {
+            console.error('Error deleting note:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to delete note.', 'error');
+        }
+    };
+
+    const getInterviewStatusBadge = (status) => {
+        switch (status) {
+            case 'SCHEDULED':
+                return { backgroundColor: 'var(--warning-light)', color: 'var(--warning-color)' };
+            case 'COMPLETED':
+                return { backgroundColor: 'var(--success-light)', color: 'var(--success-color)' };
+            case 'CANCELLED':
+                return { backgroundColor: 'var(--danger-light)', color: 'var(--danger-color)' };
+            default:
+                return { backgroundColor: 'var(--text-muted)', color: '#ffffff' };
+        }
+    };
+
+    const fetchAppInterviews = async (appId) => {
+        setLoadingAppInterviews(true);
+        try {
+            const res = await api.get(`/interviews/application/${appId}`);
+            if (res.data && res.data.success) {
+                setAppInterviews(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching app interviews:', err);
+        } finally {
+            setLoadingAppInterviews(false);
+        }
+    };
+
+    const fetchInterviewers = async () => {
+        try {
+            const res = await api.get('/recruiter/interviewers');
+            if (res.data && res.data.success) {
+                setInterviewers(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching interviewers:', err);
+        }
+    };
+
+    const resetSchedForm = () => {
+        setEditingInterview(null);
+        setSchedRound('HR_SCREENING');
+        setSchedMode('ONLINE');
+        setSchedScheduledAt('');
+        setSchedDuration(45);
+        setSchedInterviewerId('');
+        setSchedMeetingLink('');
+        setSchedLocation('');
+        setSchedNotes('');
+    };
+
+    const startEditInterview = (item) => {
+        setEditingInterview(item);
+        setSchedRound(item.interviewRound);
+        setSchedMode(item.interviewMode);
+        if (item.scheduledAt) {
+            setSchedScheduledAt(item.scheduledAt.substring(0, 16));
+        } else {
+            setSchedScheduledAt('');
+        }
+        setSchedDuration(item.durationMinutes);
+        setSchedInterviewerId(item.interviewerId || '');
+        setSchedMeetingLink(item.meetingLink || '');
+        setSchedLocation(item.location || '');
+        setSchedNotes(item.notes || '');
+        setAppTab('schedule');
+    };
+
+    const handleSaveInterview = async (e) => {
+        e.preventDefault();
+        if (!schedScheduledAt) {
+            alert('Please select date and time.');
+            return;
+        }
+        if (!schedInterviewerId) {
+            alert('Please select an interviewer.');
+            return;
+        }
+        setIsSavingInterview(true);
+
+        let formattedScheduledAt = schedScheduledAt;
+        if (formattedScheduledAt.length === 16) {
+            formattedScheduledAt += ':00';
+        }
+
+        const payload = {
+            applicationId: selectedApp.id,
+            interviewRound: schedRound,
+            interviewMode: schedMode,
+            scheduledAt: formattedScheduledAt,
+            durationMinutes: parseInt(schedDuration),
+            interviewerId: parseInt(schedInterviewerId),
+            meetingLink: schedMode === 'ONLINE' ? schedMeetingLink : null,
+            location: schedMode !== 'ONLINE' ? schedLocation : null,
+            notes: schedNotes
+        };
+
+        try {
+            let res;
+            if (editingInterview) {
+                res = await api.put(`/interviews/${editingInterview.id}`, payload);
+            } else {
+                res = await api.post('/interviews', payload);
+            }
+
+            if (res.data && res.data.success) {
+                showSubNotification(
+                    editingInterview ? 'Interview updated successfully!' : 'Interview scheduled successfully!',
+                    'success'
+                );
+                resetSchedForm();
+                fetchAppInterviews(selectedApp.id);
+                fetchApplicants(appCurrentPage, search, statusFilter);
+                setAppTab('pipeline');
+            } else {
+                showSubNotification(res.data.message || 'Failed to save interview schedule.', 'error');
+            }
+        } catch (err) {
+            console.error('Error saving interview:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to save interview schedule.', 'error');
+        } finally {
+            setIsSavingInterview(false);
+        }
+    };
+
+    const handleCancelInterview = async () => {
+        if (!cancellingInterviewId) return;
+        try {
+            const res = await api.post(`/interviews/${cancellingInterviewId}/cancel`, null, {
+                params: { note: cancelNote }
+            });
+            if (res.data && res.data.success) {
+                showSubNotification('Interview cancelled successfully!', 'success');
+                setCancellingInterviewId(null);
+                setCancelNote('');
+                fetchAppInterviews(selectedApp.id);
+                fetchApplicants(appCurrentPage, search, statusFilter);
+            } else {
+                showSubNotification(res.data.message || 'Failed to cancel interview.', 'error');
+            }
+        } catch (err) {
+            console.error('Error cancelling interview:', err);
+            showSubNotification(err.response?.data?.message || 'Failed to cancel interview.', 'error');
+        }
+    };
+
     const fetchApplicants = async (page = 0, searchVal = search, statusVal = statusFilter) => {
         const requestId = ++latestRequestRef.current;
         setLoadingApplicants(true);
@@ -668,8 +921,19 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
     React.useEffect(() => {
         if (modalTab === 'applicants') {
             fetchApplicants(0, search, statusFilter);
+            fetchInterviewers();
         }
     }, [modalTab]);
+
+    React.useEffect(() => {
+        if (selectedApp) {
+            fetchAppInterviews(selectedApp.id);
+            fetchTimeline(selectedApp);
+            fetchAppNotes(selectedApp.id);
+            setNewStatus(selectedApp.status);
+            setNotes('');
+        }
+    }, [selectedApp]);
 
     React.useEffect(() => {
         if (closeButtonRef.current) {
@@ -678,7 +942,11 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
-                if (updatingApp) {
+                if (cancellingInterviewId) {
+                    setCancellingInterviewId(null);
+                } else if (selectedApp) {
+                    setSelectedApp(null);
+                } else if (updatingApp) {
                     if (!isSavingStatus) {
                         setUpdatingApp(null);
                     }
@@ -693,7 +961,7 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
 
         const handleKeyDownTrap = (e) => {
             if (e.key === 'Tab') {
-                const activeContainer = updatingApp ? subDialogRef.current : dialogRef.current;
+                const activeContainer = selectedApp ? dialogRef.current : (updatingApp ? subDialogRef.current : dialogRef.current);
                 if (!activeContainer) return;
                 
                 const focusableElements = activeContainer.querySelectorAll(
@@ -903,7 +1171,18 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                         <tbody>
                                             {applicants.map(app => (
                                                 <tr key={app.id}>
-                                                    <td style={{ fontWeight: '600' }}>{app.candidateFullName}</td>
+                                                    <td style={{ fontWeight: '600' }}>
+                                                        <button 
+                                                            className="btn btn-link btn-sm"
+                                                            style={{ padding: 0, height: 'auto', minWidth: 'auto', fontWeight: '600', color: 'var(--primary-color)', textAlign: 'left' }}
+                                                            onClick={() => {
+                                                                setSelectedApp(app);
+                                                                setAppTab('pipeline');
+                                                            }}
+                                                        >
+                                                            {app.candidateFullName}
+                                                        </button>
+                                                    </td>
                                                     <td>
                                                         {app.resumeUrl ? (
                                                             <button 
@@ -932,6 +1211,16 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                                                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                                                             <button 
                                                                 className="btn btn-primary btn-sm"
+                                                                style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }}
+                                                                onClick={() => {
+                                                                    setSelectedApp(app);
+                                                                    setAppTab('pipeline');
+                                                                }}
+                                                            >
+                                                                Manage
+                                                            </button>
+                                                            <button 
+                                                                className="btn btn-outline btn-sm"
                                                                 style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }}
                                                                 onClick={() => {
                                                                     setUpdatingApp(app);
@@ -1197,6 +1486,492 @@ const ViewJobDetailsModal = ({ job, onClose }) => {
                         </div>
                         <div className="card-footer" style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                             <button className="btn btn-secondary btn-sm" onClick={() => setTimelineApp(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Selected Application Details Modal Overlay */}
+            {selectedApp && (
+                <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={(e) => e.target === e.currentTarget && setSelectedApp(null)}>
+                    <div className="modal-content" style={{ borderTop: '4px solid var(--primary-color)', maxWidth: '700px', width: '95%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+                        <div className="card-header" style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h4 className="card-title" style={{ fontSize: '1.1rem' }}>Manage Candidate: {selectedApp.candidateFullName}</h4>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                                    Applied for {job.title} — {new Date(selectedApp.createdAt).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setSelectedApp(null)}>✕</button>
+                        </div>
+                        
+                        {/* Inner Tabs */}
+                        <div className="tabs" style={{ margin: '0 1.25rem', display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
+                            <button className={`tab-item ${appTab === 'pipeline' ? 'active' : ''}`} onClick={() => setAppTab('pipeline')}>Pipeline & Status</button>
+                            <button className={`tab-item ${appTab === 'schedule' ? 'active' : ''}`} onClick={() => { setAppTab('schedule'); resetSchedForm(); }}>Schedule Interview</button>
+                            <button className={`tab-item ${appTab === 'notes' ? 'active' : ''}`} onClick={() => setAppTab('notes')}>Internal Notes</button>
+                            <button className={`tab-item ${appTab === 'history' ? 'active' : ''}`} onClick={() => setAppTab('history')}>Activity Log</button>
+                        </div>
+
+                        <div className="card-body" style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
+                            
+                            {appTab === 'pipeline' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {/* Status update section */}
+                                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--bg-secondary)' }}>
+                                        <h5 style={{ marginBottom: '0.75rem', fontWeight: 600 }}>Update Application Status</h5>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                            <div style={{ flex: 1, minWidth: '180px' }}>
+                                                <select 
+                                                    className="form-control"
+                                                    value={newStatus}
+                                                    onChange={(e) => setNewStatus(e.target.value)}
+                                                    style={{ fontSize: '0.85rem' }}
+                                                >
+                                                    <option value="APPLIED">Applied</option>
+                                                    <option value="UNDER_REVIEW">Under Review</option>
+                                                    <option value="SHORTLISTED">Shortlisted</option>
+                                                    <option value="INTERVIEW_SCHEDULED">Interview Scheduled</option>
+                                                    <option value="INTERVIEWED">Interviewed</option>
+                                                    <option value="OFFERED">Offered</option>
+                                                    <option value="REJECTED">Rejected</option>
+                                                </select>
+                                            </div>
+                                            <div style={{ flex: 2, minWidth: '240px' }}>
+                                                <input 
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Add status notes (optional)..."
+                                                    value={notes}
+                                                    onChange={(e) => setNotes(e.target.value)}
+                                                    style={{ fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <button 
+                                                className="btn btn-primary btn-sm"
+                                                onClick={async () => {
+                                                    setUpdatingApp(selectedApp);
+                                                    await handleUpdateStatus();
+                                                    setSelectedApp(prev => ({ ...prev, status: newStatus }));
+                                                }}
+                                                disabled={newStatus === selectedApp.status}
+                                            >
+                                                Update
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Scheduled Interviews section */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                            <h5 style={{ fontWeight: 600 }}>Scheduled Interviews</h5>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => { resetSchedForm(); setAppTab('schedule'); }}>
+                                                + Schedule
+                                            </button>
+                                        </div>
+                                        
+                                        {loadingAppInterviews ? (
+                                            <div className="skeleton" style={{ height: '80px' }}></div>
+                                        ) : appInterviews.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '2rem 1rem', border: '1px dashed var(--border-color)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                No interviews scheduled yet for this application.
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {appInterviews.map(item => (
+                                                    <div key={item.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                                                <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
+                                                                    {item.interviewRound.replace('_', ' ')}
+                                                                </span>
+                                                                <span className="badge" style={getInterviewStatusBadge(item.status)}>
+                                                                    {item.status}
+                                                                </span>
+                                                            </div>
+                                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                                                                Interviewer: {item.interviewerName} ({item.interviewerEmail})
+                                                            </p>
+                                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                                                                📅 {new Date(item.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} ({item.durationMinutes} mins)
+                                                            </p>
+                                                            {item.interviewMode === 'ONLINE' && item.meetingLink && (
+                                                                <p style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                                                                    💻 Link: <a href={item.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{item.meetingLink}</a>
+                                                                </p>
+                                                            )}
+                                                            {item.interviewMode !== 'ONLINE' && item.location && (
+                                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                                                                    📍 {item.location}
+                                                                </p>
+                                                            )}
+                                                            {item.notes && (
+                                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-color)' }}>
+                                                                    Note: {item.notes}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {item.status === 'SCHEDULED' && (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                                <button className="btn btn-secondary btn-sm" style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }} onClick={() => startEditInterview(item)}>
+                                                                    Reschedule
+                                                                </button>
+                                                                <button className="btn btn-danger btn-sm" style={{ padding: '0.2rem 0.5rem', height: '26px', fontSize: '0.75rem' }} onClick={() => setCancellingInterviewId(item.id)}>
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {appTab === 'schedule' && (
+                                <form onSubmit={handleSaveInterview} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <h5 style={{ fontWeight: 600 }}>{editingInterview ? 'Reschedule Interview' : 'Schedule New Interview'}</h5>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label form-label-required">Interview Round</label>
+                                            <select 
+                                                className="form-control"
+                                                value={schedRound}
+                                                onChange={(e) => setSchedRound(e.target.value)}
+                                                required
+                                            >
+                                                <option value="HR_SCREENING">HR Screening</option>
+                                                <option value="TECHNICAL_ROUND_1">Technical Round 1</option>
+                                                <option value="TECHNICAL_ROUND_2">Technical Round 2</option>
+                                                <option value="SYSTEM_DESIGN">System Design</option>
+                                                <option value="MANAGERIAL">Managerial</option>
+                                                <option value="FITNESS_ROUND">Fitness Round</option>
+                                                <option value="BAR_RAISER">Bar Raiser</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label form-label-required">Interview Mode</label>
+                                            <select 
+                                                className="form-control"
+                                                value={schedMode}
+                                                onChange={(e) => setSchedMode(e.target.value)}
+                                                required
+                                            >
+                                                <option value="ONLINE">Online</option>
+                                                <option value="OFFLINE">Offline (In-Person)</option>
+                                                <option value="PHONE">Phone Screen</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label form-label-required">Date & Time</label>
+                                            <input 
+                                                type="datetime-local"
+                                                className="form-control"
+                                                value={schedScheduledAt}
+                                                onChange={(e) => setSchedScheduledAt(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label form-label-required">Duration (Minutes)</label>
+                                            <select 
+                                                className="form-control"
+                                                value={schedDuration}
+                                                onChange={(e) => setSchedDuration(e.target.value)}
+                                                required
+                                            >
+                                                <option value="15">15 Minutes</option>
+                                                <option value="30">30 Minutes</option>
+                                                <option value="45">45 Minutes</option>
+                                                <option value="60">60 Minutes</option>
+                                                <option value="90">90 Minutes</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label form-label-required">Interviewer</label>
+                                        <select 
+                                            className="form-control"
+                                            value={schedInterviewerId}
+                                            onChange={(e) => setSchedInterviewerId(e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Select Interviewer...</option>
+                                            {interviewers.map(u => (
+                                                <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {schedMode === 'ONLINE' ? (
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label">Meeting Link</label>
+                                            <input 
+                                                type="url"
+                                                className="form-control"
+                                                placeholder="https://meet.google.com/xyz..."
+                                                value={schedMeetingLink}
+                                                onChange={(e) => setSchedMeetingLink(e.target.value)}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label">{schedMode === 'OFFLINE' ? 'Office Location / Room' : 'Phone Number'}</label>
+                                            <input 
+                                                type="text"
+                                                className="form-control"
+                                                placeholder={schedMode === 'OFFLINE' ? 'Conference Room A, 4th floor...' : '+1 (555) 019-2834...'}
+                                                value={schedLocation}
+                                                onChange={(e) => setSchedLocation(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Interview Notes (Shared with Interviewer)</label>
+                                        <textarea 
+                                            className="form-control"
+                                            rows="3"
+                                            placeholder="Add agenda, special requirements, or preparation notes..."
+                                            value={schedNotes}
+                                            onChange={(e) => setSchedNotes(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAppTab('pipeline')}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="btn btn-primary btn-sm" disabled={isSavingInterview}>
+                                            {editingInterview ? 'Reschedule' : 'Schedule'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {appTab === 'notes' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <h5 style={{ fontWeight: 600, marginBottom: 0 }}>Hiring Feedback & Recruiter Notes</h5>
+                                    
+                                    {/* Note entry form */}
+                                    <form onSubmit={handleCreateNote} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <textarea 
+                                                className="form-control"
+                                                rows="3"
+                                                placeholder="Add internal notes, interviewer feedback, or comments about this applicant..."
+                                                value={newNoteContent}
+                                                onChange={(e) => setNewNoteContent(e.target.value)}
+                                                required
+                                                style={{ fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                            <button type="submit" className="btn btn-primary btn-sm" disabled={savingNote || !newNoteContent.trim()}>
+                                                {savingNote ? 'Adding...' : 'Add Note'}
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    {/* Notes Feed list */}
+                                    {loadingNotes ? (
+                                        <div className="skeleton" style={{ height: '80px' }}></div>
+                                    ) : notesList.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '2.5rem 1rem', border: '1px dashed var(--border-color)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                            No internal notes recorded yet. Be the first to add feedback!
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            {notesList.map(note => {
+                                                const isAuthor = user && (note.authorEmail === user.email || note.authorId === user.id);
+                                                const isEditingThisNote = editingNoteId === note.id;
+
+                                                return (
+                                                    <div key={note.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: 'var(--bg-card)' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                                            <div>
+                                                                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{note.authorName}</strong>
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({note.authorEmail})</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                                    {new Date(note.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                                                                </span>
+                                                                {isAuthor && !isEditingThisNote && (
+                                                                    <div style={{ display: 'inline-flex', gap: '0.25rem' }}>
+                                                                        <button 
+                                                                            className="btn btn-ghost btn-sm"
+                                                                            style={{ padding: '0 4px', height: '20px', fontSize: '0.7rem', color: 'var(--primary-color)' }}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setEditingNoteId(note.id);
+                                                                                setEditingNoteContent(note.content);
+                                                                            }}
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                        <button 
+                                                                            className="btn btn-ghost btn-sm"
+                                                                            style={{ padding: '0 4px', height: '20px', fontSize: '0.7rem', color: 'var(--danger-color)' }}
+                                                                            type="button"
+                                                                            onClick={() => handleDeleteNote(note.id)}
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {isEditingThisNote ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                                                <textarea 
+                                                                    className="form-control"
+                                                                    rows="3"
+                                                                    value={editingNoteContent}
+                                                                    onChange={(e) => setEditingNoteContent(e.target.value)}
+                                                                    style={{ fontSize: '0.85rem' }}
+                                                                />
+                                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                                    <button 
+                                                                        className="btn btn-secondary btn-sm" 
+                                                                        style={{ height: '26px', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setEditingNoteId(null);
+                                                                            setEditingNoteContent('');
+                                                                        }}
+                                                                        disabled={savingNote}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn btn-primary btn-sm"
+                                                                        style={{ height: '26px', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                                                                        type="button"
+                                                                        onClick={() => handleUpdateNote(note.id)}
+                                                                        disabled={savingNote || !editingNoteContent.trim()}
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                                                                {note.content}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {appTab === 'history' && (
+                                <div>
+                                    <h5 style={{ fontWeight: 600, marginBottom: '0.75rem' }}>Status Transition Logs</h5>
+                                    {loadingTimeline ? (
+                                        <div className="skeleton" style={{ height: '80px' }}></div>
+                                    ) : timelineHistory.length === 0 ? (
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>No audit history records available.</p>
+                                    ) : (
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            position: 'relative', 
+                                            paddingLeft: '1.25rem', 
+                                            borderLeft: '2px solid var(--border-color)', 
+                                            gap: '1.25rem', 
+                                            margin: '0.5rem' 
+                                        }}>
+                                            {timelineHistory.map((item, index) => (
+                                                <div key={item.id} style={{ position: 'relative' }}>
+                                                    <div style={{ 
+                                                        position: 'absolute', 
+                                                        left: '-1.725rem', 
+                                                        top: '3px',
+                                                        width: '12px', 
+                                                        height: '12px', 
+                                                        borderRadius: '50%', 
+                                                        backgroundColor: index === timelineHistory.length - 1 ? 'var(--primary-color)' : 'var(--border-hover)', 
+                                                        border: '2px solid var(--bg-card)'
+                                                    }} />
+                                                    
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                            <span className="badge" style={{ ...getStatusBadge(item.newStatus), fontSize: '0.65rem', padding: '0.15rem 0.35rem' }}>
+                                                                {item.newStatus.replace('_', ' ')}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                                {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                                                            </span>
+                                                        </div>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                                                            Updated by <strong style={{ color: 'var(--text-primary)' }}>{item.changedByName}</strong> ({item.changedByEmail})
+                                                        </span>
+                                                        {item.note && (
+                                                            <div style={{ 
+                                                                fontSize: '0.8rem', 
+                                                                color: 'var(--text-secondary)', 
+                                                                backgroundColor: 'var(--bg-secondary)', 
+                                                                padding: '0.4rem 0.6rem', 
+                                                                borderRadius: '4px', 
+                                                                marginTop: '0.25rem', 
+                                                                borderLeft: '2px solid var(--primary-color)' 
+                                                            }}>
+                                                                {item.note}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="card-footer" style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedApp(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Interview Confirmation Modal Overlay */}
+            {cancellingInterviewId && (
+                <div className="modal-backdrop" style={{ zIndex: 1200 }} onClick={() => setCancellingInterviewId(null)}>
+                    <div className="modal-content" style={{ borderTop: '4px solid var(--danger-color)', maxWidth: '400px' }}>
+                        <div className="card-header" style={{ padding: '1rem 1.25rem' }}>
+                            <h4 className="card-title" style={{ fontSize: '1rem' }}>Cancel Interview</h4>
+                            <button className="btn btn-ghost btn-sm" style={{ padding: 0, width: '24px', height: '24px' }} onClick={() => setCancellingInterviewId(null)}>✕</button>
+                        </div>
+                        <div className="card-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Are you sure you want to cancel this interview? This will update its status to CANCELLED and notify the candidate.</p>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Cancellation Reason (Optional)</label>
+                                <textarea 
+                                    className="form-control"
+                                    rows="2"
+                                    placeholder="Enter cancellation reason..."
+                                    value={cancelNote}
+                                    onChange={(e) => setCancelNote(e.target.value)}
+                                    style={{ fontSize: '0.85rem' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="card-footer" style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setCancellingInterviewId(null)}>Close</button>
+                            <button className="btn btn-danger btn-sm" onClick={handleCancelInterview}>Cancel Interview</button>
                         </div>
                     </div>
                 </div>
