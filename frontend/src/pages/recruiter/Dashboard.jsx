@@ -41,6 +41,7 @@ const Dashboard = ({ section = 'dashboard' }) => {
     // Interviews state
     const [interviews, setInterviews] = useState([]);
     const [loadingInterviews, setLoadingInterviews] = useState(false);
+    const [interviewsError, setInterviewsError] = useState(null);
 
     // AI Settings State
     const [aiConfig, setAiConfig] = useState({
@@ -188,13 +189,17 @@ const Dashboard = ({ section = 'dashboard' }) => {
 
     const fetchInterviews = async () => {
         setLoadingInterviews(true);
+        setInterviewsError(null);
         try {
             const res = await api.get('/interviews/recruiter');
             if (res.data?.success) {
                 setInterviews(res.data.data || []);
+            } else {
+                setInterviewsError(res.data?.message || 'Failed to load interviews. Please try again.');
             }
         } catch (err) {
             console.error('Error fetching recruiter interviews:', err);
+            setInterviewsError(err.response?.data?.message || 'Failed to load interviews. Please try again.');
         } finally {
             setLoadingInterviews(false);
         }
@@ -611,6 +616,11 @@ const Dashboard = ({ section = 'dashboard' }) => {
                                 <div className="skeleton" style={{ height: '32px', marginBottom: '1rem' }}></div>
                                 <div className="skeleton" style={{ height: '32px', marginBottom: '1rem' }}></div>
                                 <div className="skeleton" style={{ height: '32px' }}></div>
+                            </div>
+                        ) : interviewsError ? (
+                            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--danger-color)' }}>
+                                <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>{interviewsError}</p>
+                                <button className="btn btn-secondary btn-sm" style={{ marginTop: '1rem' }} onClick={fetchInterviews}>Retry</button>
                             </div>
                         ) : interviews.length === 0 ? (
                             <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>

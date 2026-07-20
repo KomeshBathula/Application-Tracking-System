@@ -14,8 +14,9 @@ const Login = () => {
     const [apiError, setApiError] = useState('');
     const [loading, setLoading] = useState(false);
     const [sessionExpired, setSessionExpired] = useState(false);
-    const returnPath = location.state?.from?.pathname?.startsWith('/recruiter/')
-        ? location.state.from.pathname
+    const requestedLocation = location.state?.from;
+    const returnPath = requestedLocation?.pathname?.startsWith('/recruiter/')
+        ? `${requestedLocation.pathname}${requestedLocation.search || ''}${requestedLocation.hash || ''}`
         : '/recruiter/dashboard';
 
     useEffect(() => {

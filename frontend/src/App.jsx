@@ -56,7 +56,7 @@ function App() {
                     <Route path="/recruiter/candidates" element={<ProtectedRoute allowedRoles={['RECRUITER']}><RecruiterDashboard section="candidates" /></ProtectedRoute>} />
                     <Route path="/recruiter/interviews" element={<ProtectedRoute allowedRoles={['RECRUITER']}><RecruiterDashboard section="interviews" /></ProtectedRoute>} />
                     <Route path="/recruiter/profile" element={<ProtectedRoute allowedRoles={['RECRUITER']}><RecruiterDashboard section="profile" /></ProtectedRoute>} />
-                    <Route path="/recruiter/ai-config" element={<ProtectedRoute allowedRoles={['RECRUITER']}><RecruiterDashboard section="ai-config" /></ProtectedRoute>} />
+                    <Route path="/recruiter/ai-config" element={<ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'ADMIN']}><RecruiterDashboard section="ai-config" /></ProtectedRoute>} />
 
                     {/* Admin Portal Routes (Only accessible by direct link) */}
                     <Route path="/admin/login" element={<AdminLogin />} />
