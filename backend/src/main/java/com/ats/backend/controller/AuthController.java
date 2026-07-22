@@ -43,4 +43,15 @@ public class AuthController {
         return ResponseEntity
                 .ok(ApiResponse.success("Login successful", authResponse));
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/check-username")
+    @Operation(summary = "Check candidate username availability", description = "Checks if a candidate username is available.")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> checkUsername(@org.springframework.web.bind.annotation.RequestParam String username) {
+        boolean available = authService.isUsernameAvailable(username);
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("available", available);
+        data.put("username", username);
+        String message = available ? "Username is available" : "Username is not available";
+        return ResponseEntity.ok(ApiResponse.success(message, data));
+    }
 }

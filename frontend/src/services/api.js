@@ -34,16 +34,16 @@ api.interceptors.response.use(
             
             // Redirect to the appropriate portal login page
             if (currentPath.startsWith('/admin')) {
-                if (!currentPath.includes('/admin/login')) {
-                    window.location.href = '/admin/login?expired=true';
+                if (!currentPath.includes('/super-admin/login')) {
+                    window.location.href = '/super-admin/login?expired=true';
                 }
             } else if (currentPath.startsWith('/recruiter')) {
-                if (!currentPath.includes('/recruiter/login')) {
-                    window.location.href = '/recruiter/login?expired=true';
+                if (!currentPath.includes('/company-admin/login')) {
+                    window.location.href = '/company-admin/login?expired=true';
                 }
             } else {
-                if (!currentPath.includes('/candidate/login')) {
-                    window.location.href = '/candidate/login?expired=true';
+                if (currentPath !== '/home') {
+                    window.location.href = '/home?expired=true';
                 }
             }
         }

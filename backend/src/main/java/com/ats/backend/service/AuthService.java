@@ -8,4 +8,5 @@ import com.ats.backend.dto.UserDto;
 public interface AuthService {
     UserDto registerUser(RegisterRequest registerRequest);
     AuthResponse authenticateUser(LoginRequest loginRequest);
+    boolean isUsernameAvailable(String username);
 }

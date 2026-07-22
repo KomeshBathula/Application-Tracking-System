@@ -14,6 +14,7 @@ public class UserMapper {
         return UserDto.builder()
                 .id(user.getId())
                 .fullName(user.getFullName())
+                .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole().getRoleName().name())
                 .enabled(user.isEnabled())

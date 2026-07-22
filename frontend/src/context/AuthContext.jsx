@@ -48,10 +48,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (fullName, email, password, role, companyName = null, companyId = null) => {
+    const register = async (fullName, username, email, password, role = 'CANDIDATE', companyName = null, companyId = null) => {
         try {
             const response = await api.post('/auth/register', {
                 fullName,
+                username,
                 email,
                 password,
                 role,
@@ -59,13 +60,31 @@ export const AuthProvider = ({ children }) => {
                 companyId
             });
             if (response.data && response.data.success) {
-                return { success: true };
+                return { success: true, data: response.data.data };
             } else {
                 return { success: false, message: response.data.message || 'Registration failed' };
             }
         } catch (error) {
             const message = error.response?.data?.message || 'Registration failed';
             return { success: false, message };
+        }
+    };
+
+    const checkUsername = async (username) => {
+        try {
+            const response = await api.get(`/auth/check-username?username=${encodeURIComponent(username)}`);
+            if (response.data && response.data.success) {
+                const isAvailable = response.data.data.available;
+                return {
+                    available: isAvailable,
+                    message: isAvailable ? 'Username is available' : 'Username is not available'
+                };
+            }
+            return { available: false, message: 'Username is not available' };
+        } catch (error) {
+            const rawMsg = error.response?.data?.message;
+            const message = (rawMsg && !rawMsg.includes('No static resource')) ? rawMsg : 'Username is not available';
+            return { available: false, message };
         }
     };
 
@@ -82,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, logout, setUser: updateUserInContext }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, checkUsername, logout, setUser: updateUserInContext }}>
             {children}
         </AuthContext.Provider>
     );

@@ -52,6 +52,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
             userRepository.save(User.builder()
                     .fullName("System Admin")
+                    .username("admin")
                     .email("admin@ats.com")
                     .password(passwordEncoder.encode("admin123"))
                     .role(adminRole)
@@ -60,6 +61,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
             userRepository.save(User.builder()
                     .fullName("Alice Admin")
+                    .username("companyadmin")
                     .email("companyadmin@ats.com")
                     .password(passwordEncoder.encode("companyadmin123"))
                     .role(companyAdminRole)
@@ -69,6 +71,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
             userRepository.save(User.builder()
                     .fullName("John Recruiter")
+                    .username("recruiter")
                     .email("recruiter@ats.com")
                     .password(passwordEncoder.encode("recruiter123"))
                     .role(recruiterRole)
@@ -78,6 +81,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
             userRepository.save(User.builder()
                     .fullName("Jane Candidate")
+                    .username("candidate")
                     .email("candidate@ats.com")
                     .password(passwordEncoder.encode("candidate123"))
                     .role(candidateRole)

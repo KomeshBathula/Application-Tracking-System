@@ -55,35 +55,43 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserDto registerUser(RegisterRequest registerRequest) {
+        // Enforce candidate-only registration constraint
+        if (registerRequest.getRole() == null || !"CANDIDATE".equalsIgnoreCase(registerRequest.getRole())) {
+            throw new com.ats.backend.exception.InvalidRequestException("Registration is strictly allowed for candidates only.");
+        }
+
+        // Validate username
+        if (registerRequest.getUsername() == null || registerRequest.getUsername().trim().isEmpty()) {
+            throw new com.ats.backend.exception.InvalidRequestException("Username is required.");
+        }
+        String cleanUsername = registerRequest.getUsername().trim().toLowerCase();
+        if (userRepository.existsByUsername(cleanUsername)) {
+            throw new com.ats.backend.exception.ConflictException("Username is not available: @" + cleanUsername);
+        }
+
+        // Validate email
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             throw new EmailAlreadyExistsException("Email address is already in use: " + registerRequest.getEmail());
         }
 
-        RoleName roleNameEnum;
-        try {
-            roleNameEnum = RoleName.valueOf("ROLE_" + registerRequest.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid role specified. Allowed values are ADMIN, COMPANY_ADMIN, RECRUITER, CANDIDATE");
+        // Validate Password Complexity (>= 8 chars, 1 uppercase, 1 digit, 1 special char)
+        String pwd = registerRequest.getPassword();
+        if (pwd == null || pwd.length() < 8 
+                || !pwd.matches(".*[A-Z].*") 
+                || !pwd.matches(".*[0-9].*") 
+                || !pwd.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            throw new com.ats.backend.exception.InvalidRequestException("Password must be at least 8 characters long and contain at least one capital letter, one number, and one special character.");
         }
 
-        Role role = roleRepository.findByRoleName(roleNameEnum)
-                .orElseThrow(() -> new ResourceNotFoundException("Role " + roleNameEnum + " was not initialized in the database."));
-
-        Company company = null;
-        if (registerRequest.getCompanyId() != null) {
-            company = companyRepository.findById(registerRequest.getCompanyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + registerRequest.getCompanyId()));
-        } else if (registerRequest.getCompanyName() != null && !registerRequest.getCompanyName().trim().isEmpty()) {
-            company = companyRepository.findByName(registerRequest.getCompanyName())
-                    .orElseGet(() -> companyRepository.save(Company.builder().name(registerRequest.getCompanyName().trim()).build()));
-        }
+        Role role = roleRepository.findByRoleName(RoleName.ROLE_CANDIDATE)
+                .orElseThrow(() -> new ResourceNotFoundException("Role ROLE_CANDIDATE was not initialized in the database."));
 
         User user = User.builder()
                 .fullName(registerRequest.getFullName())
+                .username(cleanUsername)
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role(role)
-                .company(company)
                 .enabled(true)
                 .build();
 
@@ -104,12 +112,21 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
+        User user = userRepository.findByEmailOrUsername(loginRequest.getEmail(), loginRequest.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + loginRequest.getEmail()));
 
         return AuthResponse.builder()
                 .token(jwt)
                 .user(userMapper.toDto(user))
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isUsernameAvailable(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            return false;
+        }
+        return !userRepository.existsByUsername(username.trim().toLowerCase());
     }
 }
