@@ -395,7 +395,7 @@ const Dashboard = ({ section = 'dashboard' }) => {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                                                    {(u.id === user?.id || u.username === user?.username) ? (
+                                                    {Boolean((user?.id && u.id === user.id) || (user?.email && u.email && u.email.toLowerCase() === user.email.toLowerCase())) ? (
                                                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>-</span>
                                                     ) : (
                                                         <button
