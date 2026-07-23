@@ -64,7 +64,7 @@ public class AuthServiceImpl implements AuthService {
         if (registerRequest.getUsername() == null || registerRequest.getUsername().trim().isEmpty()) {
             throw new com.ats.backend.exception.InvalidRequestException("Username is required.");
         }
-        String cleanUsername = registerRequest.getUsername().trim().toLowerCase();
+        String cleanUsername = registerRequest.getUsername().trim().toLowerCase(java.util.Locale.ROOT);
         if (userRepository.existsByUsername(cleanUsername)) {
             throw new com.ats.backend.exception.ConflictException("Username is not available: @" + cleanUsername);
         }
@@ -102,9 +102,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AuthResponse authenticateUser(LoginRequest loginRequest) {
+        String identifier = loginRequest.getEmail() != null ? loginRequest.getEmail().trim() : "";
+        String cleanUsername = identifier.toLowerCase(java.util.Locale.ROOT);
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(),
+                        identifier,
                         loginRequest.getPassword()
                 )
         );
@@ -112,8 +115,8 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
 
-        User user = userRepository.findByEmailOrUsername(loginRequest.getEmail(), loginRequest.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + loginRequest.getEmail()));
+        User user = userRepository.findByEmailOrUsername(identifier, cleanUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + identifier));
 
         return AuthResponse.builder()
                 .token(jwt)
@@ -127,6 +130,6 @@ public class AuthServiceImpl implements AuthService {
         if (username == null || username.trim().isEmpty()) {
             return false;
         }
-        return !userRepository.existsByUsername(username.trim().toLowerCase());
+        return !userRepository.existsByUsername(username.trim().toLowerCase(java.util.Locale.ROOT));
     }
 }

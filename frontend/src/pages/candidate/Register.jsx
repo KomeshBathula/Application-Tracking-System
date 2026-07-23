@@ -37,6 +37,7 @@ const Register = () => {
 
     // Live Username Verification
     useEffect(() => {
+        let isCurrent = true;
         if (!username || username.trim().length === 0) {
             setUsernameStatus('idle');
             setUsernameMessage('');
@@ -56,16 +57,21 @@ const Register = () => {
 
         const timer = setTimeout(async () => {
             const result = await checkUsername(clean);
-            if (result.available) {
-                setUsernameStatus('available');
-                setUsernameMessage('Username is available');
-            } else {
-                setUsernameStatus('unavailable');
-                setUsernameMessage(result.message || 'Username is not available');
+            if (isCurrent) {
+                if (result.available) {
+                    setUsernameStatus('available');
+                    setUsernameMessage('Username is available');
+                } else {
+                    setUsernameStatus('unavailable');
+                    setUsernameMessage(result.message || 'Username is not available');
+                }
             }
         }, 350);
 
-        return () => clearTimeout(timer);
+        return () => {
+            isCurrent = false;
+            clearTimeout(timer);
+        };
     }, [username, checkUsername]);
 
     // Live Password Validation

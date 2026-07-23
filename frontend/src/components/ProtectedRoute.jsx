@@ -17,11 +17,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     if (!token || !user) {
         // Store location to redirect back after successful login
-        const loginPath = allowedRoles?.includes('ADMIN')
-            ? '/admin/login'
-            : allowedRoles?.includes('RECRUITER')
-                ? '/recruiter/login'
-                : '/candidate/login';
+        let loginPath = '/home';
+        if (location.pathname.startsWith('/admin')) {
+            loginPath = '/super-admin/login';
+        } else if (location.pathname.startsWith('/recruiter')) {
+            loginPath = '/company-admin/login';
+        }
         return <Navigate to={loginPath} state={{ from: location }} replace />;
     }
 
