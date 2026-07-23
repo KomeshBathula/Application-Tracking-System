@@ -73,8 +73,9 @@ public class AdminController {
     @Operation(summary = "Toggle User Enabled Status", description = "Enables or disables a user account.")
     public ResponseEntity<ApiResponse<UserDto>> toggleUserStatus(
             @PathVariable Long userId,
-            @RequestParam boolean enabled) {
-        UserDto updated = adminService.toggleUserStatus(userId, enabled);
+            @RequestParam boolean enabled,
+            org.springframework.security.core.Authentication authentication) {
+        UserDto updated = adminService.toggleUserStatus(authentication.getName(), userId, enabled);
         return ResponseEntity.ok(ApiResponse.success("User status updated successfully", updated));
     }
 }

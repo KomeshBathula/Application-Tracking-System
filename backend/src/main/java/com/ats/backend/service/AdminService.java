@@ -8,5 +8,5 @@ import org.springframework.data.domain.Pageable;
 public interface AdminService {
     UserDto createCompanyAdmin(CreateCompanyAdminRequest request);
     Page<UserDto> getUsersPaginated(String search, String role, Long companyId, Pageable pageable);
-    UserDto toggleUserStatus(Long userId, boolean enabled);
+    UserDto toggleUserStatus(String currentAdminUsername, Long userId, boolean enabled);
 }

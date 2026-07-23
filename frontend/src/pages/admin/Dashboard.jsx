@@ -389,7 +389,11 @@ const Dashboard = ({ section = 'dashboard' }) => {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                                                    {u.role !== 'ADMIN' && (
+                                                    {(u.id === user?.id || u.username === user?.username || u.role === 'ADMIN' || u.role === 'ROLE_ADMIN') ? (
+                                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic', padding: '0.25rem 0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
+                                                            System Protected
+                                                        </span>
+                                                    ) : (
                                                         <button
                                                             className={`btn btn-sm ${u.enabled ? 'btn-ghost' : 'btn-primary'}`}
                                                             onClick={() => handleToggleStatus(u.id, u.enabled)}
@@ -437,21 +441,66 @@ const Dashboard = ({ section = 'dashboard' }) => {
             {activeTab === 'roles' && (
                 <div className="card">
                     <div className="card-header">
-                        <h3 className="card-title">System Role Permissions</h3>
-                        <p className="card-subtitle">Scope definitions matching backend database values</p>
+                        <h3 className="card-title">ATS System Access Control Matrix</h3>
+                        <p className="card-subtitle">Granular role permissions and security scope boundaries across the platform</p>
                     </div>
-                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
-                            <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>ROLE_ADMIN (Super Admin)</h4>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.35rem', lineHeight: '1.5' }}>Provisions Company Admins, inspects scalable paginated user directories, and manages system settings.</p>
-                        </div>
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
-                            <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>ROLE_COMPANY_ADMIN</h4>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.35rem', lineHeight: '1.5' }}>Provisions recruiters for their specific enterprise company, configures AI screening thresholds, and manages company job postings.</p>
-                        </div>
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
-                            <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>ROLE_RECRUITER</h4>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.35rem', lineHeight: '1.5' }}>Authorization to manage hiring listings, edit/publish job parameters, and review candidate applications.</p>
+                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                                        <th style={{ padding: '0.75rem 1rem' }}>Capability Scope</th>
+                                        <th style={{ padding: '0.75rem 1rem' }}>Super Admin</th>
+                                        <th style={{ padding: '0.75rem 1rem' }}>Company Admin</th>
+                                        <th style={{ padding: '0.75rem 1rem' }}>Recruiter</th>
+                                        <th style={{ padding: '0.75rem 1rem' }}>Candidate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Create Company Admins</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Allowed</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Create Company Recruiters</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Allowed</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Allowed (Own Co.)</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Scalable Paginated User Management</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Global Directory</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Company Scope</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Configure AI Screening Models</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Full Control</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Enterprise Scope</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Manage Job Postings</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Global Oversight</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Company Jobs</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Assigned Jobs</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Submit Job Applications</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)' }}>Denied</td>
+                                        <td style={{ padding: '0.85rem 1rem', color: 'var(--success-color)', fontWeight: 600 }}>Allowed</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -460,13 +509,29 @@ const Dashboard = ({ section = 'dashboard' }) => {
             {activeTab === 'settings' && (
                 <div className="card">
                     <div className="card-header">
-                        <h3 className="card-title">System Settings</h3>
+                        <h3 className="card-title">System Governance & Security Policy</h3>
+                        <p className="card-subtitle">Global platform parameters, authentication rules, and database compliance</p>
                     </div>
-                    <div className="card-body">
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>Configure session properties and workspace parameters.</p>
-                        <div style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '3rem 1.5rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
-                            <p style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Standard Configurations Active</p>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Global credentials and security filter rules are managed dynamically via Spring Security Context.</p>
+                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Password Security & First-Time Reset Policy</h4>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                Enforced Rules: Password length &gt;= 8, 1 Capital letter, 1 Number, 1 Special character. All newly provisioned accounts (Company Admins & Recruiters) must update their default password on initial login before gaining access.
+                            </p>
+                        </div>
+
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Database Scalability & Pagination Policy</h4>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                All user management endpoints use Spring Data JPA `Pageable` queries with indexed filters on `username`, `email`, and `roleName`, capping max page size to 100 items to protect server memory.
+                            </p>
+                        </div>
+
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.25rem', backgroundColor: 'var(--bg-secondary)' }}>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>JWT Token & Session Security</h4>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                Stateless JWT Authentication enabled. 401 Unauthorized responses trigger automatic session termination and storage cleanup.
+                            </p>
                         </div>
                     </div>
                 </div>

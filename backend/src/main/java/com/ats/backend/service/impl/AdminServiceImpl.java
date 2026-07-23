@@ -122,9 +122,20 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public UserDto toggleUserStatus(Long userId, boolean enabled) {
+    public UserDto toggleUserStatus(String currentAdminUsername, Long userId, boolean enabled) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+
+        if (!enabled) {
+            String identifier = currentAdminUsername != null ? currentAdminUsername.trim() : "";
+            String cleanUsername = identifier.toLowerCase(Locale.ROOT);
+            User currentAdmin = userRepository.findByEmailOrUsername(identifier, cleanUsername).orElse(null);
+            
+            if (currentAdmin != null && currentAdmin.getId().equals(user.getId())) {
+                throw new InvalidRequestException("System Administrator cannot disable their own account.");
+            }
+        }
+
         user.setEnabled(enabled);
         User updated = userRepository.save(user);
         return userMapper.toDto(updated);

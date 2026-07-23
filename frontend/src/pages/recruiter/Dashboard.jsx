@@ -425,7 +425,74 @@ const Dashboard = ({ section = 'dashboard' }) => {
         setIsEditing(true);
     };
 
-    const navigationItems = [
+    const userRoleClean = user?.role?.replace('ROLE_', '') || 'RECRUITER';
+    const isCompanyAdmin = userRoleClean === 'COMPANY_ADMIN';
+    const isSuperAdmin = userRoleClean === 'ADMIN';
+
+    const roleTitle = isCompanyAdmin ? 'Company Admin' : isSuperAdmin ? 'Super Admin' : 'Recruiter';
+    const roleColor = isCompanyAdmin ? 'var(--primary-color)' : isSuperAdmin ? 'var(--danger-color)' : 'var(--success-color)';
+
+    const navigationItems = isCompanyAdmin ? [
+        { 
+            id: 'dashboard', 
+            label: 'Dashboard', 
+            path: '/recruiter/dashboard',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="9"></rect>
+                    <rect x="14" y="3" width="7" height="5"></rect>
+                    <rect x="14" y="12" width="7" height="9"></rect>
+                    <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+            )
+        },
+        { 
+            id: 'recruiters', 
+            label: 'Recruiters', 
+            path: '/recruiter/recruiters',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="17" y1="11" x2="23" y2="11"></line>
+                </svg>
+            )
+        },
+        { 
+            id: 'jobs', 
+            label: 'Company Jobs', 
+            path: '/recruiter/jobs',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+            )
+        },
+        {
+            id: 'ai-config',
+            label: 'AI Settings',
+            path: '/recruiter/ai-config',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            )
+        },
+        { 
+            id: 'profile', 
+            label: 'Profile', 
+            path: '/recruiter/profile',
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            )
+        }
+    ] : [
         { 
             id: 'dashboard', 
             label: 'Dashboard', 
@@ -450,7 +517,6 @@ const Dashboard = ({ section = 'dashboard' }) => {
                 </svg>
             )
         },
-
         { 
             id: 'candidates', 
             label: 'Candidates', 
@@ -477,17 +543,6 @@ const Dashboard = ({ section = 'dashboard' }) => {
                 </svg>
             )
         },
-        ...(user?.role === 'ROLE_COMPANY_ADMIN' || user?.role === 'ROLE_ADMIN' ? [{
-            id: 'ai-config',
-            label: 'AI Settings',
-            path: '/recruiter/ai-config',
-            icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            )
-        }] : []),
         { 
             id: 'profile', 
             label: 'Profile', 
@@ -505,85 +560,143 @@ const Dashboard = ({ section = 'dashboard' }) => {
         <AppLayout
             activeTab={activeTab}
             navigationItems={navigationItems}
-            roleTitle="Recruiter"
-            roleColor="var(--success-color)"
+            roleTitle={roleTitle}
+            roleColor={roleColor}
         >
             {activeTab === 'dashboard' && (
                 <div>
-                    <div className="card" style={{ background: 'linear-gradient(135deg, var(--success-light) 0%, rgba(0,0,0,0) 100%)', border: '1px solid var(--border-color)' }}>
-                        <div className="card-body" style={{ padding: '2.5rem 2rem' }}>
-                            <h1 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Welcome back, {user?.fullName}!</h1>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '640px' }}>Manage postings, track application status cycles, and review candidate portfolios seamlessly.</p>
-                        </div>
-                    </div>
-
-                    {/* Job Stats Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginTop: '1.5rem' }}>
-                        <div className="card" style={{ borderTop: '4px solid var(--primary-color)' }}>
-                            <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                                <h2 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', fontWeight: 800 }}>
-                                    {loadingStats ? '...' : stats.totalJobs}
-                                </h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Jobs</p>
-                            </div>
-                        </div>
-                        <div className="card" style={{ borderTop: '4px solid var(--success-color)' }}>
-                            <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                                <h2 style={{ fontSize: '2.5rem', color: 'var(--success-color)', fontWeight: 800 }}>
-                                    {loadingStats ? '...' : stats.openJobs}
-                                </h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Jobs</p>
-                            </div>
-                        </div>
-                        <div className="card" style={{ borderTop: '4px solid var(--danger-color)' }}>
-                            <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                                <h2 style={{ fontSize: '2.5rem', color: 'var(--danger-color)', fontWeight: 800 }}>
-                                    {loadingStats ? '...' : stats.closedJobs}
-                                </h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Jobs</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="dashboard-grid dashboard-grid-2-1" style={{ marginTop: '1.5rem' }}>
-                        <div className="card">
-                            <div className="card-header">
-                                <h3 className="card-title">Applicant Activity Summary</h3>
-                            </div>
-                            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-secondary)' }}>
+                    {isCompanyAdmin ? (
+                        /* Enterprise Company Admin Dashboard */
+                        <div>
+                            <div className="card" style={{ background: 'linear-gradient(135deg, var(--primary-light) 0%, rgba(0,0,0,0) 100%)', border: '1px solid var(--border-color)' }}>
+                                <div className="card-body" style={{ padding: '2.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <h4 style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Alice Smith</h4>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Applied for Senior Java Engineer</p>
+                                        <h1 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Company Admin Console: {user?.companyName || 'Enterprise'}</h1>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '640px' }}>Provision recruiters, manage company job listings, and configure multi-provider AI screening parameters.</p>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button className="btn btn-secondary btn-sm" onClick={() => alert('Phase 3 workflow engine integration')}>Schedule Interview</button>
-                                        <button className="btn btn-outline btn-sm" onClick={() => alert('Phase 3 profile viewer integration')}>Review Profile</button>
-                                    </div>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => setShowAddRecruiterModal(true)}
+                                        style={{ fontWeight: 700, padding: '0.75rem 1.25rem' }}
+                                    >
+                                        + Add Recruiter
+                                    </button>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="card">
-                            <div className="card-header">
-                                <h3 className="card-title">Workspace Details</h3>
-                            </div>
-                            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem' }}>
-                                <div>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account Operator</span>
-                                    <strong style={{ color: 'var(--text-primary)', display: 'block', marginTop: '0.15rem' }}>{user?.fullName}</strong>
+                            <div className="dashboard-grid dashboard-grid-3" style={{ marginTop: '1.5rem' }}>
+                                <div className="card">
+                                    <div className="card-body" style={{ padding: '1.5rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Company Recruiters</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '0.35rem', color: 'var(--text-primary)' }}>
+                                            {recruitersData.totalElements || 0}
+                                        </div>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Managed team members</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Company Identifier</span>
-                                    <strong style={{ color: 'var(--text-primary)', display: 'block', marginTop: '0.15rem' }}>{user?.email}</strong>
+
+                                <div className="card">
+                                    <div className="card-body" style={{ padding: '1.5rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Job Postings</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '0.35rem', color: 'var(--text-primary)' }}>
+                                            {stats.openJobs || 0}
+                                        </div>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Company postings online</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem', display: 'block' }}>System Status</span>
-                                    <span className="badge badge-success">Online & Secure</span>
+
+                                <div className="card">
+                                    <div className="card-body" style={{ padding: '1.5rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>AI Screening Engine</div>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.5rem', color: 'var(--primary-color)' }}>
+                                            {aiConfig.enabled ? (aiConfig.aiProvider || 'Active') : 'Disabled'}
+                                        </div>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                            {aiConfig.enabled ? `Model: ${aiConfig.modelName}` : 'Configure in AI Settings'}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        /* Standard Recruiter Dashboard */
+                        <div>
+                            <div className="card" style={{ background: 'linear-gradient(135deg, var(--success-light) 0%, rgba(0,0,0,0) 100%)', border: '1px solid var(--border-color)' }}>
+                                <div className="card-body" style={{ padding: '2.5rem 2rem' }}>
+                                    <h1 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Welcome back, {user?.fullName}!</h1>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '640px' }}>Manage postings, track application status cycles, and review candidate portfolios seamlessly.</p>
+                                </div>
+                            </div>
+
+                            {/* Job Stats Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginTop: '1.5rem' }}>
+                                <div className="card" style={{ borderTop: '4px solid var(--primary-color)' }}>
+                                    <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                                        <h2 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', fontWeight: 800 }}>
+                                            {loadingStats ? '...' : stats.totalJobs}
+                                        </h2>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Jobs</p>
+                                    </div>
+                                </div>
+                                <div className="card" style={{ borderTop: '4px solid var(--success-color)' }}>
+                                    <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                                        <h2 style={{ fontSize: '2.5rem', color: 'var(--success-color)', fontWeight: 800 }}>
+                                            {loadingStats ? '...' : stats.openJobs}
+                                        </h2>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Jobs</p>
+                                    </div>
+                                </div>
+                                <div className="card" style={{ borderTop: '4px solid var(--danger-color)' }}>
+                                    <div className="card-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                                        <h2 style={{ fontSize: '2.5rem', color: 'var(--danger-color)', fontWeight: 800 }}>
+                                            {loadingStats ? '...' : stats.closedJobs}
+                                        </h2>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closed Jobs</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="dashboard-grid dashboard-grid-2-1" style={{ marginTop: '1.5rem' }}>
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h3 className="card-title">Applicant Activity Summary</h3>
+                                    </div>
+                                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-secondary)' }}>
+                                            <div>
+                                                <h4 style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Alice Smith</h4>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Applied for Senior Java Engineer</p>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button className="btn btn-secondary btn-sm" onClick={() => alert('Phase 3 workflow engine integration')}>Schedule Interview</button>
+                                                <button className="btn btn-outline btn-sm" onClick={() => alert('Phase 3 profile viewer integration')}>Review Profile</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h3 className="card-title">Workspace Details</h3>
+                                    </div>
+                                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem' }}>
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account Operator</span>
+                                            <strong style={{ color: 'var(--text-primary)', display: 'block', marginTop: '0.15rem' }}>{user?.fullName}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Company Identifier</span>
+                                            <strong style={{ color: 'var(--text-primary)', display: 'block', marginTop: '0.15rem' }}>{user?.email}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem', display: 'block' }}>System Status</span>
+                                            <span className="badge badge-success">Online & Secure</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -851,10 +964,22 @@ const Dashboard = ({ section = 'dashboard' }) => {
                                             id="aiProvider"
                                             className="form-control"
                                             value={aiConfig.aiProvider || 'OPENAI'}
-                                            onChange={(e) => setAiConfig({ ...aiConfig, aiProvider: e.target.value })}
+                                            onChange={(e) => {
+                                                const prov = e.target.value;
+                                                let defaultModel = 'gpt-4o';
+                                                if (prov === 'GROQ') defaultModel = 'llama-3.3-70b-versatile';
+                                                else if (prov === 'CLAUDE') defaultModel = 'claude-3-5-sonnet-20241022';
+                                                else if (prov === 'GEMINI') defaultModel = 'gemini-1.5-pro';
+                                                else if (prov === 'DEEPSEEK') defaultModel = 'deepseek-chat';
+                                                setAiConfig({ ...aiConfig, aiProvider: prov, modelName: defaultModel });
+                                            }}
                                             style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}
                                         >
-                                            <option value="OPENAI">OpenAI</option>
+                                            <option value="OPENAI">OpenAI (GPT-4o, GPT-3.5)</option>
+                                            <option value="GROQ">Groq (Llama 3.3, Mixtral)</option>
+                                            <option value="CLAUDE">Anthropic Claude (Sonnet 3.5, Opus)</option>
+                                            <option value="GEMINI">Google Gemini (1.5 Pro, Flash)</option>
+                                            <option value="DEEPSEEK">DeepSeek (V3 / Coder)</option>
                                         </select>
                                     </div>
 
@@ -866,7 +991,7 @@ const Dashboard = ({ section = 'dashboard' }) => {
                                             className="form-control"
                                             value={aiConfig.modelName || ''}
                                             onChange={(e) => setAiConfig({ ...aiConfig, modelName: e.target.value })}
-                                            placeholder="e.g. gpt-4o"
+                                            placeholder="e.g. gpt-4o, llama-3.3-70b-versatile, claude-3-5-sonnet"
                                             style={{ width: '100%' }}
                                         />
                                     </div>
